@@ -123,8 +123,8 @@ app.get('/', (c) => {
         
         <!-- Main Dashboard (hidden initially) -->
         <div id="dashboardScreen" class="hidden">
-            <!-- Top Navigation Bar -->
-            <nav class="bg-white shadow-lg border-b border-gray-200">
+            <!-- Top Navigation Bar - FIXED -->
+            <nav class="bg-white shadow-lg border-b border-gray-200 fixed top-0 left-0 right-0 z-50">
                 <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
                     <div class="flex justify-between h-16">
                         <div class="flex items-center">
@@ -143,9 +143,9 @@ app.get('/', (c) => {
                         </div>
                         
                         <div class="flex items-center space-x-4">
-                            <button class="text-gray-600 hover:text-gray-800 relative">
+                            <button id="notificationBtn" class="text-gray-600 hover:text-gray-800 relative">
                                 <i class="fas fa-bell text-xl"></i>
-                                <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
+                                <span id="notificationBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
                             </button>
                             
                             <div class="flex items-center space-x-3">
@@ -162,9 +162,9 @@ app.get('/', (c) => {
                 </div>
             </nav>
             
-            <div class="flex h-screen overflow-hidden">
-                <!-- Sidebar -->
-                <aside id="sidebar" class="sidebar bg-white w-64 border-r border-gray-200 overflow-y-auto">
+            <div class="flex h-screen overflow-hidden pt-16">
+                <!-- Sidebar - FIXED -->
+                <aside id="sidebar" class="sidebar bg-white w-64 border-r border-gray-200 overflow-y-auto fixed left-0 top-16 bottom-0">
                     <nav class="p-4 space-y-2">
                         <a href="#" data-view="dashboard" class="nav-link flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition">
                             <i class="fas fa-chart-line w-6"></i>
@@ -216,7 +216,7 @@ app.get('/', (c) => {
                 </aside>
                 
                 <!-- Main Content -->
-                <main class="flex-1 overflow-y-auto bg-gray-50 p-6">
+                <main class="flex-1 overflow-y-auto bg-gray-50 p-6 ml-64">
                     <div id="mainContent">
                         <div class="text-center py-12">
                             <i class="fas fa-spinner fa-spin text-4xl text-blue-600"></i>

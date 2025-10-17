@@ -7,7 +7,9 @@ const state = {
     token: localStorage.getItem('dom_token'),
     user: null,
     currentView: 'dashboard',
-    currentMatter: null
+    currentMatter: null,
+    matterTypes: [],
+    notifications: []
 };
 
 // API client
@@ -70,7 +72,15 @@ document.getElementById('logoutBtn')?.addEventListener('click', logout);
 function logout() {
     state.token = null;
     state.user = null;
+    state.matterTypes = [];
+    state.notifications = [];
     localStorage.removeItem('dom_token');
+    
+    // Limpar menus para evitar bug de persistência
+    document.getElementById('secretariaMenu').classList.add('hidden');
+    document.getElementById('semadMenu').classList.add('hidden');
+    document.getElementById('adminMenu').classList.add('hidden');
+    
     showLogin();
 }
 
@@ -89,6 +99,11 @@ async function showDashboard() {
             state.user = data;
         }
         
+        // Limpar todos os menus primeiro (corrige bug de persistência)
+        document.getElementById('secretariaMenu').classList.add('hidden');
+        document.getElementById('semadMenu').classList.add('hidden');
+        document.getElementById('adminMenu').classList.add('hidden');
+        
         // Update UI with user info
         document.getElementById('userName').textContent = state.user.name;
         document.getElementById('userRole').textContent = getRoleName(state.user.role);
@@ -104,6 +119,12 @@ async function showDashboard() {
             document.getElementById('adminMenu').classList.remove('hidden');
         }
         
+        // Load matter types
+        await loadMatterTypes();
+        
+        // Load notifications
+        await loadNotifications();
+        
         // Show dashboard screen
         document.getElementById('loginScreen').classList.add('hidden');
         document.getElementById('dashboardScreen').classList.remove('hidden');
@@ -116,6 +137,51 @@ async function showDashboard() {
         logout();
     }
 }
+
+// Load matter types
+async function loadMatterTypes() {
+    try {
+        const { data } = await api.get('/matter-types');
+        state.matterTypes = data.matterTypes;
+    } catch (error) {
+        console.error('Error loading matter types:', error);
+    }
+}
+
+// Load notifications
+async function loadNotifications() {
+    try {
+        // TODO: implementar rota de notificações
+        // const { data } = await api.get('/notifications');
+        // state.notifications = data.notifications.filter(n => !n.read);
+        
+        // Mock para teste
+        state.notifications = [];
+        updateNotificationBadge();
+    } catch (error) {
+        console.error('Error loading notifications:', error);
+    }
+}
+
+// Update notification badge
+function updateNotificationBadge() {
+    const badge = document.getElementById('notificationBadge');
+    if (state.notifications.length > 0) {
+        badge.textContent = state.notifications.length;
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+}
+
+// Notification button click
+document.getElementById('notificationBtn')?.addEventListener('click', () => {
+    if (state.notifications.length > 0) {
+        alert('Você tem ' + state.notifications.length + ' notificação(ões) pendente(s).\n\nMódulo de notificações será implementado em breve.');
+    } else {
+        alert('Nenhuma notificação pendente.');
+    }
+});
 
 // Get role display name
 function getRoleName(role) {
@@ -302,6 +368,11 @@ async function loadDashboard(container) {
 async function loadMyMatters(container) {
     const { data } = await api.get('/matters');
     
+    // Get unique matter types from state for filter
+    const matterTypesOptions = state.matterTypes.map(mt => 
+        `<option value="${mt.id}">${mt.name}</option>`
+    ).join('');
+    
     container.innerHTML = `
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-bold text-gray-800">
@@ -316,23 +387,80 @@ async function loadMyMatters(container) {
         </div>
         
         <div class="bg-white rounded-lg shadow overflow-hidden">
-            <div class="p-4 border-b border-gray-200">
-                <input 
-                    type="text" 
-                    id="filterMatters"
-                    class="px-4 py-2 border border-gray-300 rounded-lg w-full md:w-64"
-                    placeholder="Buscar matéria..."
-                    onkeyup="filterMattersList()"
-                >
+            <div class="p-4 border-b border-gray-200 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <input 
+                        type="text" 
+                        id="filterMattersText"
+                        class="px-4 py-2 border border-gray-300 rounded-lg"
+                        placeholder="Buscar por título..."
+                        onkeyup="filterMattersList()"
+                    >
+                    
+                    <select 
+                        id="filterMattersType"
+                        class="px-4 py-2 border border-gray-300 rounded-lg"
+                        onchange="filterMattersList()"
+                    >
+                        <option value="">Todos os tipos</option>
+                        ${matterTypesOptions}
+                    </select>
+                    
+                    <select 
+                        id="filterMattersStatus"
+                        class="px-4 py-2 border border-gray-300 rounded-lg"
+                        onchange="filterMattersList()"
+                    >
+                        <option value="">Todos os status</option>
+                        <option value="draft">Rascunho</option>
+                        <option value="submitted">Enviado</option>
+                        <option value="under_review">Em Análise</option>
+                        <option value="approved">Aprovado</option>
+                        <option value="rejected">Rejeitado</option>
+                        <option value="published">Publicado</option>
+                    </select>
+                    
+                    <input 
+                        type="date" 
+                        id="filterMattersDate"
+                        class="px-4 py-2 border border-gray-300 rounded-lg"
+                        onchange="filterMattersList()"
+                    >
+                </div>
+                
+                <div class="flex justify-end">
+                    <button 
+                        onclick="clearMattersFilters()"
+                        class="text-sm text-gray-600 hover:text-gray-800"
+                    >
+                        <i class="fas fa-times mr-1"></i>Limpar filtros
+                    </button>
+                </div>
             </div>
             
             <div id="mattersList" class="divide-y divide-gray-200">
-                ${data.matters.map(matter => `
-                    <div class="p-4 hover:bg-gray-50 matter-item" data-title="${matter.title.toLowerCase()}">
+                ${data.matters.map(matter => {
+                    const matterTypeName = state.matterTypes.find(mt => mt.id === matter.matter_type_id)?.name || 'Sem tipo';
+                    const priorityBadge = {
+                        'urgent': '<span class="text-red-600 text-xs font-bold ml-2">URGENTE</span>',
+                        'high': '<span class="text-orange-600 text-xs font-bold ml-2">ALTA</span>',
+                        'normal': '',
+                        'low': '<span class="text-gray-500 text-xs ml-2">Baixa</span>'
+                    };
+                    
+                    return `
+                    <div class="p-4 hover:bg-gray-50 matter-item" 
+                         data-title="${matter.title.toLowerCase()}"
+                         data-type="${matter.matter_type_id || ''}"
+                         data-status="${matter.status}"
+                         data-date="${matter.created_at ? matter.created_at.split('T')[0] : ''}">
                         <div class="flex justify-between items-start">
                             <div class="flex-1">
-                                <h3 class="font-semibold text-gray-800">${matter.title}</h3>
-                                <p class="text-sm text-gray-500 mt-1">${matter.matter_type || 'Sem tipo'} - ${matter.category_name || 'Sem categoria'}</p>
+                                <h3 class="font-semibold text-gray-800">
+                                    ${matter.title}
+                                    ${priorityBadge[matter.priority || 'normal']}
+                                </h3>
+                                <p class="text-sm text-gray-500 mt-1">${matterTypeName}</p>
                                 <p class="text-xs text-gray-400 mt-2">
                                     <i class="fas fa-calendar mr-1"></i>${formatDate(matter.created_at)}
                                 </p>
@@ -397,17 +525,45 @@ async function loadMyMatters(container) {
 
 // Filter matters list
 function filterMattersList() {
-    const filter = document.getElementById('filterMatters').value.toLowerCase();
+    const textFilter = document.getElementById('filterMattersText')?.value.toLowerCase() || '';
+    const typeFilter = document.getElementById('filterMattersType')?.value || '';
+    const statusFilter = document.getElementById('filterMattersStatus')?.value || '';
+    const dateFilter = document.getElementById('filterMattersDate')?.value || '';
+    
     const items = document.querySelectorAll('.matter-item');
     
     items.forEach(item => {
         const title = item.dataset.title;
-        if (title.includes(filter)) {
+        const type = item.dataset.type;
+        const status = item.dataset.status;
+        const date = item.dataset.date;
+        
+        const matchesText = !textFilter || title.includes(textFilter);
+        const matchesType = !typeFilter || type === typeFilter;
+        const matchesStatus = !statusFilter || status === statusFilter;
+        const matchesDate = !dateFilter || date === dateFilter;
+        
+        if (matchesText && matchesType && matchesStatus && matchesDate) {
             item.style.display = '';
         } else {
             item.style.display = 'none';
         }
     });
+}
+
+// Clear all filters
+function clearMattersFilters() {
+    const textInput = document.getElementById('filterMattersText');
+    const typeSelect = document.getElementById('filterMattersType');
+    const statusSelect = document.getElementById('filterMattersStatus');
+    const dateInput = document.getElementById('filterMattersDate');
+    
+    if (textInput) textInput.value = '';
+    if (typeSelect) typeSelect.value = '';
+    if (statusSelect) statusSelect.value = '';
+    if (dateInput) dateInput.value = '';
+    
+    filterMattersList();
 }
 
 // View matter details
@@ -439,14 +595,22 @@ async function viewMatterDetails(id) {
                     </span>
                 </div>
                 
-                <div class="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-gray-200">
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6 pb-6 border-b border-gray-200">
                     <div>
                         <p class="text-sm text-gray-500">Secretaria</p>
-                        <p class="font-medium">${matter.secretaria_name}</p>
+                        <p class="font-medium">${matter.secretaria_name || '-'}</p>
                     </div>
                     <div>
                         <p class="text-sm text-gray-500">Autor</p>
-                        <p class="font-medium">${matter.author_name}</p>
+                        <p class="font-medium">${matter.author_name || '-'}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Tipo</p>
+                        <p class="font-medium">${state.matterTypes.find(mt => mt.id === matter.matter_type_id)?.name || 'Sem tipo'}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Prioridade</p>
+                        <p class="font-medium">${getPriorityName(matter.priority || 'normal')}</p>
                     </div>
                     <div>
                         <p class="text-sm text-gray-500">Criado em</p>
@@ -456,12 +620,44 @@ async function viewMatterDetails(id) {
                         <p class="text-sm text-gray-500">Versão</p>
                         <p class="font-medium">v${matter.version}</p>
                     </div>
+                    ${matter.publication_date ? `
+                        <div>
+                            <p class="text-sm text-gray-500">Data de Publicação</p>
+                            <p class="font-medium">${new Date(matter.publication_date).toLocaleDateString('pt-BR')}</p>
+                        </div>
+                    ` : ''}
+                    ${matter.submitted_by ? `
+                        <div>
+                            <p class="text-sm text-gray-500">Enviado por</p>
+                            <p class="font-medium">${matter.submitter_name || 'ID: ' + matter.submitted_by}</p>
+                        </div>
+                    ` : ''}
+                    ${matter.server_timestamp ? `
+                        <div>
+                            <p class="text-sm text-gray-500">Datador (Server Timestamp)</p>
+                            <p class="font-medium">${formatDate(matter.server_timestamp)}</p>
+                        </div>
+                    ` : ''}
                 </div>
+                
+                ${matter.summary ? `
+                    <div class="mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-3">Resumo</h3>
+                        <div class="bg-gray-50 p-4 rounded-lg whitespace-pre-wrap">${matter.summary}</div>
+                    </div>
+                ` : ''}
                 
                 <div class="mb-6">
                     <h3 class="text-lg font-semibold text-gray-800 mb-3">Conteúdo</h3>
                     <div class="bg-gray-50 p-4 rounded-lg whitespace-pre-wrap">${matter.content}</div>
                 </div>
+                
+                ${matter.observations ? `
+                    <div class="mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-3">Observações Internas</h3>
+                        <div class="bg-yellow-50 p-4 rounded-lg whitespace-pre-wrap border border-yellow-200">${matter.observations}</div>
+                    </div>
+                ` : ''}
                 
                 ${matter.signature_hash ? `
                     <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
@@ -482,6 +678,17 @@ async function viewMatterDetails(id) {
                             <i class="fas fa-times-circle mr-2"></i>Motivo da Rejeição
                         </h3>
                         <p class="text-gray-700">${matter.rejection_reason}</p>
+                    </div>
+                ` : ''}
+                
+                ${matter.canceled_at && matter.cancelation_reason ? `
+                    <div class="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                        <h3 class="text-lg font-semibold text-orange-800 mb-2">
+                            <i class="fas fa-ban mr-2"></i>Cancelamento
+                        </h3>
+                        <p class="text-sm text-gray-600 mb-2">Cancelado em: ${formatDate(matter.canceled_at)}</p>
+                        ${matter.canceler_name ? `<p class="text-sm text-gray-600 mb-2">Por: ${matter.canceler_name}</p>` : ''}
+                        <p class="text-gray-700">Motivo: ${matter.cancelation_reason}</p>
                     </div>
                 ` : ''}
                 
@@ -529,7 +736,22 @@ async function viewMatterDetails(id) {
 // ====================================
 
 function loadNewMatterForm(container, matterId = null) {
+    const matterTypesOptions = state.matterTypes.map(mt => 
+        `<option value="${mt.id}">${mt.name}</option>`
+    ).join('');
+    
+    const todayDate = new Date().toISOString().split('T')[0];
+    
     container.innerHTML = `
+        <div class="mb-6">
+            <button 
+                onclick="loadView('myMatters')"
+                class="text-blue-600 hover:text-blue-800 flex items-center"
+            >
+                <i class="fas fa-arrow-left mr-2"></i>Voltar
+            </button>
+        </div>
+        
         <h2 class="text-2xl font-bold text-gray-800 mb-6">
             <i class="fas fa-plus-circle mr-2"></i>${matterId ? 'Editar' : 'Nova'} Matéria
         </h2>
@@ -548,16 +770,30 @@ function loadNewMatterForm(container, matterId = null) {
                 >
             </div>
             
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Tipo *</label>
-                    <input 
-                        type="text" 
-                        id="matterType"
+                    <select 
+                        id="matterTypeId"
                         required
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                        placeholder="Ex: Decreto, Portaria, Edital"
                     >
+                        <option value="">Selecione o tipo</option>
+                        ${matterTypesOptions}
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Prioridade *</label>
+                    <select 
+                        id="matterPriority"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="normal" selected>Normal</option>
+                        <option value="high">Alta</option>
+                        <option value="urgent">Urgente</option>
+                        <option value="low">Baixa</option>
+                    </select>
                 </div>
                 
                 <div>
@@ -573,10 +809,21 @@ function loadNewMatterForm(container, matterId = null) {
             </div>
             
             <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Data de Publicação</label>
+                <input 
+                    type="date" 
+                    id="matterPublicationDate"
+                    min="${todayDate}"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                <p class="text-xs text-gray-500 mt-1">Deixe em branco para publicação imediata</p>
+            </div>
+            
+            <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Resumo</label>
                 <textarea 
                     id="matterSummary"
-                    rows="3"
+                    rows="2"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     placeholder="Resumo opcional da matéria"
                 ></textarea>
@@ -587,13 +834,23 @@ function loadNewMatterForm(container, matterId = null) {
                 <textarea 
                     id="matterContent"
                     required
-                    rows="15"
+                    rows="12"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                     placeholder="Digite o conteúdo completo da matéria"
                 ></textarea>
             </div>
             
-            <div class="flex space-x-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Observações</label>
+                <textarea 
+                    id="matterObservations"
+                    rows="3"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="Observações internas (não serão publicadas)"
+                ></textarea>
+            </div>
+            
+            <div class="flex flex-wrap gap-3">
                 <button 
                     type="button"
                     onclick="saveMatterDraft()"
@@ -607,7 +864,7 @@ function loadNewMatterForm(container, matterId = null) {
                     onclick="saveMatterAndSubmit()"
                     class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition"
                 >
-                    <i class="fas fa-paper-plane mr-2"></i>Salvar e Enviar para Análise
+                    <i class="fas fa-paper-plane mr-2"></i>Salvar e Enviar
                 </button>
                 
                 <button 
@@ -633,10 +890,13 @@ async function loadMatterForEdit(id) {
         const matter = data.matter;
         
         document.getElementById('matterTitle').value = matter.title;
-        document.getElementById('matterType').value = matter.matter_type;
+        document.getElementById('matterTypeId').value = matter.matter_type_id || '';
+        document.getElementById('matterPriority').value = matter.priority || 'normal';
+        document.getElementById('matterPublicationDate').value = matter.publication_date || '';
         document.getElementById('matterLayout').value = matter.layout_columns;
         document.getElementById('matterSummary').value = matter.summary || '';
         document.getElementById('matterContent').value = matter.content;
+        document.getElementById('matterObservations').value = matter.observations || '';
     } catch (error) {
         alert('Erro ao carregar matéria: ' + error.message);
         loadView('myMatters');
@@ -656,10 +916,13 @@ async function saveMatter(submitForReview) {
     const title = document.getElementById('matterTitle').value;
     const content = document.getElementById('matterContent').value;
     const summary = document.getElementById('matterSummary').value;
-    const matter_type = document.getElementById('matterType').value;
+    const matter_type_id = parseInt(document.getElementById('matterTypeId').value);
+    const priority = document.getElementById('matterPriority').value;
+    const publication_date = document.getElementById('matterPublicationDate').value || null;
+    const observations = document.getElementById('matterObservations').value;
     const layout_columns = parseInt(document.getElementById('matterLayout').value);
     
-    if (!title || !content || !matter_type) {
+    if (!title || !content || !matter_type_id) {
         alert('Preencha todos os campos obrigatórios!');
         return;
     }
@@ -671,7 +934,10 @@ async function saveMatter(submitForReview) {
                 title,
                 content,
                 summary,
-                matter_type,
+                matter_type_id,
+                priority,
+                publication_date,
+                observations,
                 layout_columns
             });
             
@@ -687,7 +953,10 @@ async function saveMatter(submitForReview) {
                 title,
                 content,
                 summary,
-                matter_type,
+                matter_type_id,
+                priority,
+                publication_date,
+                observations,
                 layout_columns
             });
             
@@ -740,16 +1009,22 @@ async function submitMatterForReview(id) {
 }
 
 async function cancelSubmission(id) {
-    if (!confirm('Deseja cancelar o envio e voltar esta matéria para rascunho?')) {
+    const reason = prompt('Digite o motivo do cancelamento:');
+    
+    if (!reason || reason.trim() === '') {
+        alert('O motivo do cancelamento é obrigatório!');
         return;
     }
     
     try {
-        // TODO: Implementar rota no backend
-        alert('Funcionalidade de cancelamento será implementada no backend');
+        await api.post(`/matters/${id}/cancel`, {
+            cancelation_reason: reason
+        });
+        
+        alert('Envio cancelado com sucesso!');
         loadView('myMatters');
     } catch (error) {
-        alert('Erro ao cancelar envio: ' + error.message);
+        alert('Erro ao cancelar envio: ' + (error.response?.data?.error || error.message));
     }
 }
 
@@ -1059,6 +1334,16 @@ function getStatusName(status) {
         archived: 'Arquivado'
     };
     return statuses[status] || status;
+}
+
+function getPriorityName(priority) {
+    const priorities = {
+        urgent: '🔴 Urgente',
+        high: '🟠 Alta',
+        normal: '🟢 Normal',
+        low: '🔵 Baixa'
+    };
+    return priorities[priority] || priority;
 }
 
 function getStatusColor(status) {

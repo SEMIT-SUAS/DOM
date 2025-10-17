@@ -31,7 +31,7 @@ O DOM é uma plataforma moderna e responsiva para digitalização completa do pr
 
 ## ✨ Funcionalidades Implementadas (ATUALIZADO)
 
-### ✅ Módulos Concluídos (MVP 80%)
+### ✅ Módulos Concluídos (MVP 85%)
 
 #### 1. Sistema de Autenticação e Autorização
 - Login com email e senha
@@ -41,19 +41,25 @@ O DOM é uma plataforma moderna e responsiva para digitalização completa do pr
 - Hash SHA-256 para senhas
 - Sistema de sessão persistente
 
-#### 2. Módulo de Envio de Matérias (Secretarias) - CRUD COMPLETO
-- **Interface de Criação/Edição**:
+#### 2. Módulo de Envio de Matérias (Secretarias) - CRUD COMPLETO E APRIMORADO
+- **Interface de Criação/Edição Completa**:
   - Formulário completo para nova matéria
   - Editor de texto para conteúdo
-  - Seleção de tipo (Decreto, Portaria, Edital, etc.)
+  - **✅ SELECT de tipo de matéria** (Decreto, Lei, Portaria, Edital, etc.) - Tabela auxiliar implementada
+  - **✅ Campo de prioridade** (Urgente, Alta, Normal, Baixa)
+  - **✅ Data de publicação** (hoje ou datas futuras)
+  - **✅ Campo de observações** (notas internas não publicadas)
   - Resumo opcional
   - Escolha de layout (1 ou 2 colunas)
   - Editar matérias em rascunho
+  - **✅ Botão "Voltar"** em todos os formulários
   - Visualização prévia antes de enviar
   
 - **Gestão de Matérias**:
   - Listagem de todas as matérias da secretaria
-  - Filtros e busca em tempo real
+  - **✅ Filtros avançados**: busca por título, tipo, status e data
+  - **✅ Botão "Limpar filtros"** para reset rápido
+  - **✅ Badges de prioridade** visíveis na listagem
   - Visualização de status com cores
   - Visualização detalhada de cada matéria
   - Botões de ação contextuais por status
@@ -64,10 +70,13 @@ O DOM é uma plataforma moderna e responsiva para digitalização completa do pr
   - ✅ **Update**: Editar rascunhos
   - ✅ **Delete**: Excluir rascunhos
   
-- **Fluxo de Trabalho Correto**:
+- **Fluxo de Trabalho Completo**:
   - Salvar como rascunho (pode editar/excluir)
   - Enviar para análise SEMAD
-  - Cancelar envio (volta para rascunho)
+  - **✅ Cancelar envio com motivo obrigatório** (volta para rascunho)
+  - **✅ Controles de horário**: janelas de envio (até 15h e 18h-00h)
+  - **✅ Bloqueio de finais de semana e feriados**
+  - **✅ Registro de quem enviou e quando** (server timestamp)
   - Matérias enviadas: apenas visualizar ou cancelar
   - Controle de versões
   - Histórico de alterações
@@ -118,7 +127,8 @@ O DOM é uma plataforma moderna e responsiva para digitalização completa do pr
   - `users` - Usuários do sistema
   - `secretarias` - Secretarias municipais
   - `categories` - Categorias de matérias
-  - `matters` - Matérias/publicações
+  - **✅ `matter_types`** - Tipos de matérias (tabela auxiliar para select)
+  - `matters` - Matérias/publicações (com novos campos: priority, publication_date, observations, submitted_by, server_timestamp, cancelation_reason)
   - `matter_versions` - Histórico de versões
   - `attachments` - Anexos
   - `editions` - Edições do diário
@@ -132,15 +142,17 @@ O DOM é uma plataforma moderna e responsiva para digitalização completa do pr
 - **Dados Seed**:
   - 5 secretarias padrão
   - 8 categorias de matérias
-  - 3 usuários de teste
+  - **✅ 12 tipos de matérias pré-configurados** (Decreto, Lei, Portaria, Edital, Ato, Resolução, etc.)
+  - 3 usuários de teste (senhas corrigidas com SHA-256)
   - Regras de publicação
   - Feriados nacionais 2025
   - Configurações do sistema
 
-#### 6. Interface Web Responsiva - COMPLETA E FUNCIONAL
+#### 6. Interface Web Responsiva - COMPLETA E APRIMORADA
 - Design moderno com Tailwind CSS
 - Adaptável para desktop, tablet e mobile
 - Ícones FontAwesome integrados
+- **✅ Navegação fixa no topo** (não esconde ao rolar)
 - **Dashboard Real** com estatísticas:
   - Total de matérias
   - Contadores por status
@@ -150,19 +162,42 @@ O DOM é uma plataforma moderna e responsiva para digitalização completa do pr
   - Menu lateral intuitivo
   - Destaque do item ativo
   - Menus contextuais por perfil
+  - **✅ Bug corrigido**: menus não persistem após logout
   - Navegação fluida entre telas
 - **Feedback Visual**:
   - Status com cores (rascunho, enviado, aprovado, etc.)
+  - **✅ Badges de prioridade** com cores (🔴 Urgente, 🟠 Alta, 🟢 Normal, 🔵 Baixa)
   - Botões de ação contextuais
   - Confirmações e alertas
   - Mensagens de sucesso/erro
 - **Funcionalidades UX**:
   - Busca em tempo real
-  - Filtros dinâmicos
+  - **✅ Filtros avançados** (texto, tipo, status, data)
+  - **✅ Botão "Voltar"** em todas as telas de detalhes
+  - **✅ Exibição de metadados completos**: tipo, prioridade, data de publicação, quem enviou, datador (server timestamp)
+  - **✅ Exibição de observações internas** em destaque
+  - **✅ Exibição de motivo de cancelamento** quando aplicável
   - Scroll em conteúdo longo
   - Tooltips informativos
 
 ## 🚧 Funcionalidades Pendentes
+
+### ✅ Melhorias Recentemente Implementadas (2025-10-17)
+
+1. **✅ Campo tipo como SELECT** - Migrado de input texto para dropdown com tabela auxiliar `matter_types`
+2. **✅ Filtros avançados** - Filtros por data, tipo e status na listagem de matérias
+3. **✅ Botões "Voltar"** - Adicionados em todos os formulários e telas de detalhes
+4. **✅ Prompt para cancelamento** - Campo obrigatório para motivo ao cancelar envio
+5. **✅ Prioridade de matérias** - Campo com 4 níveis (Urgente, Alta, Normal, Baixa)
+6. **✅ Data de publicação** - Campo para agendar publicação futura
+7. **✅ Campo observações** - Notas internas não publicadas
+8. **✅ Registro de envio** - Captura de quem enviou e quando (datador/server timestamp)
+9. **✅ Controles de horário** - Validação de janelas de envio (15h e 18h-00h)
+10. **✅ Bloqueio de finais de semana e feriados** - Validação no backend
+11. **✅ Exibição de metadados completos** - Tipo, prioridade, datas, submissor, observações
+12. **✅ Navegação fixa** - Barra superior não esconde ao rolar
+13. **✅ Bug de menus corrigido** - Menus não persistem após logout
+14. **✅ Permissões ajustadas** - Admin e SEMAD podem criar matérias
 
 ### 📋 Próximas Implementações
 
@@ -177,7 +212,7 @@ O DOM é uma plataforma moderna e responsiva para digitalização completa do pr
 - Busca por texto completo
 - Filtros avançados (data, categoria, secretaria)
 - Visualização de matérias publicadas
-- Download de PDFs
+- ⏳ Download de anexos (preparado, não implementado)
 - Verificação de autenticidade (hash)
 
 #### 3. Geração de PDF
@@ -197,15 +232,17 @@ O DOM é uma plataforma moderna e responsiva para digitalização completa do pr
 - Configuração SMTP
 
 #### 5. Agendamento e Controle de Horário
-- Horário limite para envio (cutoff)
+- ✅ Horário limite para envio (cutoff) - 15h e janela 18h-00h (implementado no backend)
 - Horário padrão de publicação
-- Validação de dias úteis
-- Respeito a feriados
+- ✅ Validação de dias úteis (implementado no backend)
+- ✅ Respeito a feriados (implementado no backend)
+- ⏳ Interface admin para configurar horários (pendente)
 - Cron triggers Cloudflare
 
 #### 6. Cadastro de Feriados
-- Interface de gerenciamento
-- Feriados nacionais/estaduais/municipais
+- ⏳ Interface de gerenciamento (preparado, não implementado)
+- ✅ Tabela de feriados criada e populada (2025)
+- ✅ Validação de feriados no envio (implementado no backend)
 - Feriados recorrentes
 - Pontos facultativos
 - Importação de calendário
@@ -219,12 +256,13 @@ O DOM é uma plataforma moderna e responsiva para digitalização completa do pr
 - Exportação de relatórios
 
 #### 8. Administração
-- Gerenciamento de usuários
-- Gerenciamento de secretarias
-- Gerenciamento de categorias
-- Configurações do sistema
+- ⏳ Gerenciamento de usuários (interface pendente)
+- ⏳ Gerenciamento de secretarias (interface pendente)
+- ⏳ Gerenciamento de categorias (interface pendente)
+- ✅ **Gerenciamento de tipos de matérias** - CRUD via API implementado
+- ⏳ Configurações do sistema (interface pendente)
 - Backup e restauração
-- Logs de auditoria
+- ✅ Logs de auditoria (tabela criada e funcional)
 
 ## 🏗️ Arquitetura do Sistema
 
@@ -346,11 +384,17 @@ Rejeitado (com motivo) → Devolver para Secretaria → Ajustar → Reenviar
 - `GET /api/auth/me` - Dados do usuário
 
 ### Matérias
-- `GET /api/matters` - Listar matérias
+- `GET /api/matters` - Listar matérias (com filtros de visibilidade por role)
 - `GET /api/matters/:id` - Buscar matéria
-- `POST /api/matters` - Criar matéria
+- `POST /api/matters` - Criar matéria (admin, semad e secretaria)
 - `PUT /api/matters/:id` - Atualizar matéria
-- `POST /api/matters/:id/submit` - Enviar para análise
+- `POST /api/matters/:id/submit` - Enviar para análise (com validações de horário/feriados)
+- **✅ `POST /api/matters/:id/cancel`** - Cancelar envio com motivo
+
+### Tipos de Matérias
+- **✅ `GET /api/matter-types`** - Listar tipos de matérias
+- **✅ `POST /api/matter-types`** - Criar tipo (admin only)
+- **✅ `PUT /api/matter-types/:id`** - Atualizar tipo (admin only)
 
 ### SEMAD
 - `GET /api/semad/pending` - Matérias pendentes
@@ -387,13 +431,17 @@ Rejeitado (com motivo) → Devolver para Secretaria → Ajustar → Reenviar
 
 ## 📈 Status do Desenvolvimento
 
-### MVP (Mínimo Produto Viável) - 60% Concluído
+### MVP (Mínimo Produto Viável) - 85% Concluído
 - ✅ Estrutura base
 - ✅ Autenticação
-- ✅ Envio de matérias
+- ✅ Envio de matérias (CRUD completo + melhorias)
 - ✅ Análise SEMAD
 - ✅ Assinatura eletrônica
-- ⏳ Publicação
+- ✅ Controles de horário e feriados (backend)
+- ✅ Sistema de tipos de matérias
+- ✅ Filtros avançados
+- ✅ Prioridades e agendamento
+- ⏳ Publicação (60% - agendamento preparado)
 - ⏳ Pesquisa pública
 
 ### Versão 2 - 0% Concluído
@@ -422,6 +470,24 @@ Para dúvidas ou sugestões sobre o sistema, consulte a documentação ou entre 
 
 ---
 
-**Última Atualização**: 2025-10-17  
-**Versão**: 0.6.0 (MVP em desenvolvimento)  
+**Última Atualização**: 2025-10-17 20:30  
+**Versão**: 0.8.5 (MVP 85% completo)  
 **Status**: 🟢 Ativo e em desenvolvimento
+
+## 📝 Changelog Recente
+
+### v0.8.5 (2025-10-17)
+- ✅ Implementado sistema de tipos de matérias com tabela auxiliar
+- ✅ Adicionados filtros avançados (data, tipo, status)
+- ✅ Implementado campo de prioridade com 4 níveis
+- ✅ Adicionado campo de data de publicação
+- ✅ Implementado campo de observações internas
+- ✅ Adicionado registro de quem enviou e server timestamp
+- ✅ Implementadas validações de horário de envio (15h e 18h-00h)
+- ✅ Implementado bloqueio de finais de semana e feriados
+- ✅ Implementado cancelamento com motivo obrigatório
+- ✅ Corrigido bug de menus persistentes após logout
+- ✅ Navegação superior fixada no topo
+- ✅ Permissões ajustadas (admin/semad podem criar matérias)
+- ✅ Melhorias na exibição de metadados completos
+- ✅ API de tipos de matérias (CRUD completo)
