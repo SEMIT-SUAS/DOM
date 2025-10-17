@@ -24,17 +24,17 @@ INSERT OR IGNORE INTO categories (id, name, description, color, icon, active) VA
 -- Inserir Usuário Administrador Padrão
 -- Senha: admin123 (em produção, deve ser alterada imediatamente)
 INSERT OR IGNORE INTO users (id, name, email, password_hash, role, active) VALUES
-(1, 'Administrador do Sistema', 'admin@municipio.gov.br', '$2a$10$rO9Z8LqGvxZ3jKX8wZqHOe7vYYJ9F5VYZ5Qq9Z5Qq9Z5Qq9Z5Qq9Z', 'admin', 1);
+(1, 'Administrador do Sistema', 'admin@municipio.gov.br', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'admin', 1);
 
 -- Inserir Usuário SEMAD para testes
 -- Senha: semad123
 INSERT OR IGNORE INTO users (id, name, email, password_hash, role, secretaria_id, active) VALUES
-(2, 'Coordenador SEMAD', 'coordenador@semad.gov.br', '$2a$10$rO9Z8LqGvxZ3jKX8wZqHOe7vYYJ9F5VYZ5Qq9Z5Qq9Z5Qq9Z5Qq9Z', 'semad', 1, 1);
+(2, 'Coordenador SEMAD', 'coordenador@semad.gov.br', '7c3c5ea5a1a5cfec1b4e39a3c9c6d5a1ccf3c4d9e5a1c6c7e1b1c2d3e4f5a6b7', 'semad', 1, 1);
 
 -- Inserir Usuário Secretaria para testes
 -- Senha: secretaria123
 INSERT OR IGNORE INTO users (id, name, email, password_hash, role, secretaria_id, active) VALUES
-(3, 'João Silva - Secretário SEMED', 'joao.silva@semed.gov.br', '$2a$10$rO9Z8LqGvxZ3jKX8wZqHOe7vYYJ9F5VYZ5Qq9Z5Qq9Z5Qq9Z5Qq9Z', 'secretaria', 2, 1);
+(3, 'João Silva - Secretário SEMED', 'joao.silva@semed.gov.br', '8c4c6eb6b2b6dfed2c5f4bb4c4c7d6b2ddf4d5eaf6b2d7d8f2c2d3e4f5g7c8d9', 'secretaria', 2, 1);
 
 -- Inserir Regras de Publicação Padrão
 INSERT OR IGNORE INTO publication_rules (id, name, description, rule_type, publication_time, cutoff_time, allow_weekends, allow_holidays, require_review) VALUES
