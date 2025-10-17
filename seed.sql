@@ -29,12 +29,12 @@ INSERT OR IGNORE INTO users (id, name, email, password_hash, role, active) VALUE
 -- Inserir Usuário SEMAD para testes
 -- Senha: semad123
 INSERT OR IGNORE INTO users (id, name, email, password_hash, role, secretaria_id, active) VALUES
-(2, 'Coordenador SEMAD', 'coordenador@semad.gov.br', '7c3c5ea5a1a5cfec1b4e39a3c9c6d5a1ccf3c4d9e5a1c6c7e1b1c2d3e4f5a6b7', 'semad', 1, 1);
+(2, 'Coordenador SEMAD', 'coordenador@semad.gov.br', '07a33b8e6ce426e853d20abd9625a13bb89ae67b60b85ea41acaef55d34250a7', 'semad', 1, 1);
 
 -- Inserir Usuário Secretaria para testes
 -- Senha: secretaria123
 INSERT OR IGNORE INTO users (id, name, email, password_hash, role, secretaria_id, active) VALUES
-(3, 'João Silva - Secretário SEMED', 'joao.silva@semed.gov.br', '8c4c6eb6b2b6dfed2c5f4bb4c4c7d6b2ddf4d5eaf6b2d7d8f2c2d3e4f5g7c8d9', 'secretaria', 2, 1);
+(3, 'João Silva - Secretário SEMED', 'joao.silva@semed.gov.br', 'b78847eb7959618ed22e43389ff68944a55a6a26893f9c74be4e7216bab6f4d5', 'secretaria', 2, 1);
 
 -- Inserir Regras de Publicação Padrão
 INSERT OR IGNORE INTO publication_rules (id, name, description, rule_type, publication_time, cutoff_time, allow_weekends, allow_holidays, require_review) VALUES
