@@ -205,4 +205,86 @@ auth.get('/me', async (c) => {
   }
 });
 
+/**
+ * POST /api/auth/forgot-password
+ * Solicita redefinição de senha (simulado - sem email real)
+ */
+auth.post('/forgot-password', async (c) => {
+  try {
+    const { email } = await c.req.json();
+    
+    if (!email) {
+      return c.json({ error: 'Email é obrigatório' }, 400);
+    }
+    
+    // Buscar usuário
+    const user = await c.env.DB
+      .prepare('SELECT id, email, name FROM users WHERE email = ? AND active = 1')
+      .bind(email)
+      .first();
+    
+    // Por segurança, sempre retornar sucesso mesmo se email não existir
+    // Em produção, enviaria email com token de reset
+    
+    if (user) {
+      // TODO: Em produção, gerar token de reset e enviar email
+      // Por enquanto, apenas registrar o log
+      await c.env.DB
+        .prepare(`
+          INSERT INTO audit_logs (user_id, action, entity_type, entity_id, new_values, ip_address, user_agent, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        `)
+        .bind(
+          user.id,
+          'forgot_password_request',
+          'user',
+          user.id,
+          JSON.stringify({ email: user.email }),
+          c.req.header('cf-connecting-ip') || 'unknown',
+          c.req.header('user-agent') || 'unknown'
+        )
+        .run();
+    }
+    
+    return c.json({ 
+      message: 'Se o email existir em nossa base, você receberá instruções para redefinir sua senha.',
+      // TEMPORÁRIO: Em desenvolvimento, retornar email de contato
+      info: 'Em produção, um email será enviado. Entre em contato com o administrador do sistema.'
+    });
+    
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    return c.json({ error: 'Erro ao processar solicitação' }, 500);
+  }
+});
+
+/**
+ * POST /api/auth/reset-password
+ * Redefine senha com token (placeholder para implementação futura)
+ */
+auth.post('/reset-password', async (c) => {
+  try {
+    const { token, newPassword } = await c.req.json();
+    
+    if (!token || !newPassword) {
+      return c.json({ error: 'Token e nova senha são obrigatórios' }, 400);
+    }
+    
+    if (newPassword.length < 6) {
+      return c.json({ error: 'Nova senha deve ter pelo menos 6 caracteres' }, 400);
+    }
+    
+    // TODO: Implementar validação de token e reset de senha
+    // Por enquanto, retornar não implementado
+    
+    return c.json({ 
+      error: 'Funcionalidade em desenvolvimento. Entre em contato com o administrador do sistema.' 
+    }, 501);
+    
+  } catch (error) {
+    console.error('Reset password error:', error);
+    return c.json({ error: 'Erro ao redefinir senha' }, 500);
+  }
+});
+
 export default auth;

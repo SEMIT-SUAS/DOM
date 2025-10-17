@@ -381,6 +381,8 @@ Rejeitado (com motivo) → Devolver para Secretaria → Ajustar → Reenviar
 - `POST /api/auth/login` - Login
 - `POST /api/auth/register` - Cadastro (admin)
 - `POST /api/auth/change-password` - Alterar senha
+- **✅ `POST /api/auth/forgot-password`** - Recuperar senha (registro de log)
+- **✅ `POST /api/auth/reset-password`** - Redefinir senha (placeholder)
 - `GET /api/auth/me` - Dados do usuário
 
 ### Matérias
@@ -470,11 +472,17 @@ Para dúvidas ou sugestões sobre o sistema, consulte a documentação ou entre 
 
 ---
 
-**Última Atualização**: 2025-10-17 20:30  
-**Versão**: 0.8.5 (MVP 85% completo)  
+**Última Atualização**: 2025-10-17 21:00  
+**Versão**: 0.8.6 (MVP 85% completo)  
 **Status**: 🟢 Ativo e em desenvolvimento
 
 ## 📝 Changelog Recente
+
+### v0.8.6 (2025-10-17)
+- ✅ **Implementado "Esqueceu a senha"** - Link e endpoint funcional
+- ✅ Endpoint de recuperação de senha com registro de auditoria
+- ✅ Melhorias no feedback visual de login
+- ✅ Placeholder para reset de senha (implementação futura com email)
 
 ### v0.8.5 (2025-10-17)
 - ✅ Implementado sistema de tipos de matérias com tabela auxiliar

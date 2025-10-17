@@ -50,6 +50,11 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
     const errorEl = document.getElementById('loginError');
+    const successEl = document.getElementById('loginSuccess');
+    
+    // Hide messages
+    errorEl?.classList.add('hidden');
+    successEl?.classList.add('hidden');
     
     try {
         const { data } = await api.post('/auth/login', { email, password });
@@ -61,8 +66,43 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
         showDashboard();
         
     } catch (error) {
-        errorEl.textContent = error.response?.data?.error || 'Erro ao fazer login';
-        errorEl.classList.remove('hidden');
+        if (errorEl) {
+            errorEl.textContent = error.response?.data?.error || 'Erro ao fazer login';
+            errorEl.classList.remove('hidden');
+        }
+    }
+});
+
+// Forgot password
+document.getElementById('forgotPasswordLink')?.addEventListener('click', async () => {
+    const email = prompt('Digite seu email para recuperar a senha:');
+    
+    if (!email) {
+        return;
+    }
+    
+    const errorEl = document.getElementById('loginError');
+    const successEl = document.getElementById('loginSuccess');
+    
+    // Hide messages
+    errorEl?.classList.add('hidden');
+    successEl?.classList.add('hidden');
+    
+    try {
+        const { data } = await api.post('/auth/forgot-password', { email });
+        
+        if (successEl) {
+            successEl.textContent = data.message + '\n\n' + (data.info || '');
+            successEl.classList.remove('hidden');
+        }
+        
+        alert(data.message + '\n\n' + (data.info || 'Entre em contato com o administrador do sistema.'));
+        
+    } catch (error) {
+        if (errorEl) {
+            errorEl.textContent = error.response?.data?.error || 'Erro ao processar solicitação';
+            errorEl.classList.remove('hidden');
+        }
     }
 });
 

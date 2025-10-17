@@ -108,9 +108,20 @@ app.get('/', (c) => {
                     >
                         <i class="fas fa-sign-in-alt mr-2"></i>Entrar
                     </button>
+                    
+                    <div class="text-center mt-3">
+                        <button 
+                            type="button"
+                            id="forgotPasswordLink"
+                            class="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                        >
+                            Esqueceu a senha?
+                        </button>
+                    </div>
                 </form>
                 
                 <div id="loginError" class="mt-4 text-red-600 text-sm text-center hidden"></div>
+                <div id="loginSuccess" class="mt-4 text-green-600 text-sm text-center hidden"></div>
                 
                 <div class="mt-8 text-center text-sm text-gray-600">
                     <p>Credenciais de teste:</p>
