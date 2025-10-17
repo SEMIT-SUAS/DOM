@@ -14,6 +14,7 @@ import matters from './routes/matters';
 import semad from './routes/semad';
 import matterTypes from './routes/matter-types';
 import editions from './routes/editions';
+import users from './routes/users';
 
 const app = new Hono<HonoContext>();
 
@@ -29,6 +30,7 @@ app.route('/api/matters', matters);
 app.route('/api/semad', semad);
 app.route('/api/matter-types', matterTypes);
 app.route('/api/editions', editions);
+app.route('/api/users', users);
 
 // Health check
 app.get('/api/health', (c) => {

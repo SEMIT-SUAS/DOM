@@ -1579,19 +1579,291 @@ async function viewPublicMatter(id) {
 // ADMIN: USERS MANAGEMENT
 // ====================================
 
-function loadUsersManagement(container) {
-    container.innerHTML = `
-        <h2 class="text-2xl font-bold text-gray-800 mb-6">
-            <i class="fas fa-users mr-2"></i>Gerenciamento de Usuários
-        </h2>
+async function loadUsersManagement(container) {
+    try {
+        const { data } = await api.get('/users');
         
-        <div class="bg-white rounded-lg shadow p-6">
-            <p class="text-gray-600">
-                <i class="fas fa-info-circle mr-2"></i>
-                Módulo de gerenciamento de usuários em desenvolvimento
-            </p>
+        container.innerHTML = `
+            <div class="mb-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">
+                        <i class="fas fa-users mr-2"></i>Gerenciamento de Usuários
+                    </h2>
+                    <button onclick="showNewUserModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg transition">
+                        <i class="fas fa-plus mr-2"></i>Novo Usuário
+                    </button>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Perfil</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Secretaria</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            ${data.users.map(user => `
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="font-medium text-gray-900">${user.name}</span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-gray-700">
+                                        ${user.email}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="${getRoleBadgeColor(user.role)} px-3 py-1 rounded-full text-sm font-medium">
+                                            ${getRoleName(user.role)}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-gray-700">
+                                        ${user.secretaria_acronym || '-'}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="${user.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} px-3 py-1 rounded-full text-sm font-medium">
+                                            ${user.active ? 'Ativo' : 'Inativo'}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                        <button onclick="editUser(${user.id})" class="text-blue-600 hover:text-blue-900" title="Editar">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button onclick="resetUserPassword(${user.id})" class="text-green-600 hover:text-green-900" title="Resetar senha">
+                                            <i class="fas fa-key"></i>
+                                        </button>
+                                        ${user.id !== state.user.id ? `
+                                            <button onclick="toggleUserStatus(${user.id}, ${user.active})" class="text-yellow-600 hover:text-yellow-900" title="${user.active ? 'Desativar' : 'Ativar'}">
+                                                <i class="fas fa-${user.active ? 'ban' : 'check'}"></i>
+                                            </button>
+                                        ` : ''}
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        
+    } catch (error) {
+        console.error('Error loading users:', error);
+        container.innerHTML = `<p class="text-red-600">Erro ao carregar usuários: ${error.message}</p>`;
+    }
+}
+
+function getRoleBadgeColor(role) {
+    const colors = {
+        admin: 'bg-purple-100 text-purple-800',
+        semad: 'bg-green-100 text-green-800',
+        secretaria: 'bg-blue-100 text-blue-800',
+        publico: 'bg-gray-100 text-gray-800'
+    };
+    return colors[role] || 'bg-gray-100 text-gray-800';
+}
+
+async function showNewUserModal() {
+    // Buscar secretarias para o dropdown
+    const secretariasResponse = await api.get('/matters?limit=1'); // Placeholder - precisa criar rota específica
+    
+    const modal = document.createElement('div');
+    modal.innerHTML = `
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" id="userModal">
+            <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Novo Usuário</h3>
+                
+                <form id="userForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                        <input type="text" id="userName" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <input type="email" id="userEmail" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">CPF (opcional)</label>
+                        <input type="text" id="userCpf" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+                        <input type="password" id="userPassword" required minlength="6" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Perfil</label>
+                        <select id="userRole" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            <option value="">Selecione...</option>
+                            <option value="admin">Administrador</option>
+                            <option value="semad">SEMAD</option>
+                            <option value="secretaria">Secretaria</option>
+                            <option value="publico">Público</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-2 mt-6">
+                        <button type="button" onclick="closeUserModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                            Criar
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     `;
+    
+    document.body.appendChild(modal);
+    
+    document.getElementById('userForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const userData = {
+            name: document.getElementById('userName').value,
+            email: document.getElementById('userEmail').value,
+            cpf: document.getElementById('userCpf').value || null,
+            password: document.getElementById('userPassword').value,
+            role: document.getElementById('userRole').value
+        };
+        
+        try {
+            await api.post('/users', userData);
+            alert('Usuário criado com sucesso!');
+            closeUserModal();
+            loadView('users');
+        } catch (error) {
+            alert(error.response?.data?.error || 'Erro ao criar usuário');
+        }
+    });
+}
+
+function closeUserModal() {
+    document.getElementById('userModal')?.remove();
+}
+
+async function editUser(id) {
+    try {
+        const { data } = await api.get(`/users/${id}`);
+        const user = data.user;
+        
+        const modal = document.createElement('div');
+        modal.innerHTML = `
+            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" id="userModal">
+                <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Editar Usuário</h3>
+                    
+                    <form id="userForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                            <input type="text" id="userName" value="${user.name}" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input type="email" id="userEmail" value="${user.email}" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">CPF</label>
+                            <input type="text" id="userCpf" value="${user.cpf || ''}" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Perfil</label>
+                            <select id="userRole" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                                <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Administrador</option>
+                                <option value="semad" ${user.role === 'semad' ? 'selected' : ''}>SEMAD</option>
+                                <option value="secretaria" ${user.role === 'secretaria' ? 'selected' : ''}>Secretaria</option>
+                                <option value="publico" ${user.role === 'publico' ? 'selected' : ''}>Público</option>
+                            </select>
+                        </div>
+                        
+                        <div class="flex justify-end space-x-2 mt-6">
+                            <button type="button" onclick="closeUserModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                                Salvar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        document.getElementById('userForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const userData = {
+                name: document.getElementById('userName').value,
+                email: document.getElementById('userEmail').value,
+                cpf: document.getElementById('userCpf').value || null,
+                role: document.getElementById('userRole').value,
+                active: user.active
+            };
+            
+            try {
+                await api.put(`/users/${id}`, userData);
+                alert('Usuário atualizado com sucesso!');
+                closeUserModal();
+                loadView('users');
+            } catch (error) {
+                alert(error.response?.data?.error || 'Erro ao atualizar usuário');
+            }
+        });
+        
+    } catch (error) {
+        alert('Erro ao carregar dados do usuário');
+    }
+}
+
+async function resetUserPassword(id) {
+    const newPassword = prompt('Digite a nova senha (mínimo 6 caracteres):');
+    
+    if (!newPassword || newPassword.length < 6) {
+        alert('Senha deve ter pelo menos 6 caracteres');
+        return;
+    }
+    
+    if (!confirm('Confirma o reset da senha para este usuário?')) {
+        return;
+    }
+    
+    try {
+        await api.put(`/users/${id}/reset-password`, { new_password: newPassword });
+        alert('Senha resetada com sucesso!');
+    } catch (error) {
+        alert(error.response?.data?.error || 'Erro ao resetar senha');
+    }
+}
+
+async function toggleUserStatus(id, currentStatus) {
+    const action = currentStatus ? 'desativar' : 'ativar';
+    
+    if (!confirm(`Tem certeza que deseja ${action} este usuário?`)) {
+        return;
+    }
+    
+    try {
+        if (currentStatus) {
+            await api.delete(`/users/${id}`);
+        } else {
+            await api.put(`/users/${id}`, { active: 1 });
+        }
+        alert(`Usuário ${action === 'desativar' ? 'desativado' : 'ativado'} com sucesso!`);
+        loadView('users');
+    } catch (error) {
+        alert(error.response?.data?.error || `Erro ao ${action} usuário`);
+    }
 }
 
 // ====================================
