@@ -50,7 +50,7 @@ interface PDFResult {
 /**
  * Gera o HTML completo da edição do Diário Oficial
  */
-function generateEditionHTML(data: EditionData): string {
+function generateEditionHTML(data: EditionData, validationHash: string): string {
   const { edition, matters } = data;
   
   // Formatar data para exibição
@@ -363,7 +363,7 @@ function generateEditionHTML(data: EditionData): string {
     <p>Publicado em: ${editionDate.toLocaleDateString('pt-BR')}</p>
     <p>Total de matérias publicadas: ${matters.length}</p>
     <p class="validation-hash">
-      <strong>Hash de validação:</strong> ${generateEditionHash(edition, matters)}
+      <strong>Hash de validação:</strong> ${validationHash}
     </p>
     <p style="margin-top: 1rem; font-size: 8pt;">
       Este documento foi gerado eletronicamente e possui validade legal.<br>
@@ -378,7 +378,7 @@ function generateEditionHTML(data: EditionData): string {
 /**
  * Gera um hash único para a edição (para validação de autenticidade)
  */
-function generateEditionHash(edition: any, matters: any[]): string {
+async function generateEditionHash(edition: any, matters: any[]): Promise<string> {
   const content = JSON.stringify({
     edition_number: edition.edition_number,
     edition_date: edition.edition_date,
@@ -387,7 +387,7 @@ function generateEditionHash(edition: any, matters: any[]): string {
     matter_count: matters.length
   });
   
-  return generateHash(content);
+  return await generateHash(content);
 }
 
 /**
@@ -406,11 +406,11 @@ export async function generateEditionPDF(
   data: EditionData
 ): Promise<PDFResult> {
   try {
-    // Gerar HTML da edição
-    const htmlContent = generateEditionHTML(data);
+    // Gerar hash do conteúdo PRIMEIRO
+    const contentHash = await generateEditionHash(data.edition, data.matters);
     
-    // Gerar hash do conteúdo
-    const contentHash = generateEditionHash(data.edition, data.matters);
+    // Gerar HTML da edição com o hash já calculado
+    const htmlContent = generateEditionHTML(data, contentHash);
     
     // Nome do arquivo
     const filename = `diario-oficial-${data.edition.edition_number.replace(/\//g, '-')}-${data.edition.year}.html`;
@@ -488,7 +488,7 @@ export async function validateEditionHash(
   `).bind(editionId).all();
   
   // Recalcular hash
-  const calculatedHash = generateEditionHash(edition, matters as any[]);
+  const calculatedHash = await generateEditionHash(edition, matters as any[]);
   
   return calculatedHash === providedHash;
 }
