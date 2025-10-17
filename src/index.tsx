@@ -297,6 +297,10 @@ app.get('/', (c) => {
                                 <i class="fas fa-users w-6"></i>
                                 <span class="ml-3">Usuários</span>
                             </a>
+                            <a href="#" data-view="secretarias" class="nav-link flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition">
+                                <i class="fas fa-building w-6"></i>
+                                <span class="ml-3">Secretarias</span>
+                            </a>
                             <a href="#" data-view="holidays" class="nav-link flex items-center px-4 py-3 text-gray-700 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition">
                                 <i class="fas fa-calendar-alt w-6"></i>
                                 <span class="ml-3">Feriados</span>
