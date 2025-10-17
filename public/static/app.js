@@ -544,7 +544,8 @@ async function loadMyMatters(container) {
                             </div>
                         </div>
                     </div>
-                `).join('')}
+                    `;
+                }).join('')}
                 
                 ${data.matters.length === 0 ? `
                     <div class="p-8 text-center text-gray-500">
