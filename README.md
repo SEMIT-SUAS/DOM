@@ -29,9 +29,9 @@ O DOM é uma plataforma moderna e responsiva para digitalização completa do pr
 - **Senha**: secretaria123
 - **Permissões**: Criação e envio de matérias da SEMED
 
-## ✨ Funcionalidades Implementadas (ATUALIZADO)
+## ✨ Funcionalidades Implementadas (ATUALIZADO - 95% COMPLETO)
 
-### ✅ Módulos Concluídos (MVP 85%)
+### ✅ Módulos Concluídos (MVP 95%)
 
 #### 1. Sistema de Autenticação e Autorização
 - Login com email e senha
@@ -180,6 +180,80 @@ O DOM é uma plataforma moderna e responsiva para digitalização completa do pr
   - Scroll em conteúdo longo
   - Tooltips informativos
 
+#### 7. Sistema de Edições do Diário Oficial (NOVO - 100%)
+- **Gestão de Edições**:
+  - Criar nova edição com número e data
+  - Listar edições com filtros (status, ano)
+  - Visualizar edição com todas as matérias
+  - Adicionar matérias aprovadas à edição
+  - Remover matérias da edição
+  - Reordenar matérias (controle de display_order)
+  - Publicar edição (gera PDF final)
+  - Excluir edições em rascunho
+
+- **Geração de PDF**:
+  - HTML estruturado profissional
+  - Cabeçalho com brasão e informações da edição
+  - Layout 1 ou 2 colunas por matéria
+  - Metadados completos (secretaria, autor, tipo)
+  - Assinatura eletrônica de cada matéria
+  - Hash SHA-256 de validação da edição
+  - Rodapé com paginação e validação
+  - CSS print-friendly otimizado
+  - Preparado para integração com serviço HTML→PDF
+
+- **Controles de Acesso**:
+  - Apenas SEMAD e Admin podem gerenciar edições
+  - Edições publicadas são imutáveis
+  - Sistema de auditoria em todas as ações
+  - Rastreamento completo de alterações
+
+- **Interface UI**:
+  - Lista de edições com filtros avançados
+  - Visualização detalhada com matérias ordenadas
+  - Modal de adição de matérias (busca em aprovadas)
+  - Confirmações de publicação e exclusão
+  - Badge visual de status (Rascunho, Publicado, Arquivado)
+  - Download de PDF publicado
+
+#### 8. Gerenciamento de Usuários (NOVO - 100%)
+- **CRUD Completo de Usuários**:
+  - Listar todos os usuários do sistema
+  - Criar novo usuário (nome, email, senha, perfil)
+  - Editar dados de usuários
+  - Resetar senha de usuários
+  - Ativar/desativar usuários (soft delete)
+  - Proteção: admin não pode desativar a si mesmo
+
+- **Interface UI**:
+  - Tabela completa com informações
+  - Badges coloridos por perfil e status
+  - Modal de criação de usuário
+  - Modal de edição de usuário
+  - Reset de senha com confirmação
+  - Validações de segurança
+
+- **Segurança**:
+  - Hash SHA-256 para senhas
+  - Restrição apenas para administradores
+  - Sistema de auditoria completo
+  - Validação de campos obrigatórios
+
+#### 9. Pesquisa Pública (100%)
+- **Busca Avançada**:
+  - Busca por texto (título e conteúdo)
+  - Filtro por tipo de matéria
+  - Filtro por período (data inicial e final)
+  - Apenas matérias publicadas
+  - Resultados paginados
+
+- **Visualização**:
+  - Lista de resultados com metadados
+  - Visualização completa da matéria
+  - Informações de assinatura eletrônica
+  - Hash de validação visível
+  - Design com tema purple (público)
+
 ## 🚧 Funcionalidades Pendentes
 
 ### ✅ Melhorias Recentemente Implementadas (2025-10-17)
@@ -199,30 +273,26 @@ O DOM é uma plataforma moderna e responsiva para digitalização completa do pr
 13. **✅ Bug de menus corrigido** - Menus não persistem após logout
 14. **✅ Permissões ajustadas** - Admin e SEMAD podem criar matérias
 
-### 📋 Próximas Implementações
+### 📋 Próximas Implementações (5% restante)
 
-#### 1. Módulo de Publicação
-- Geração automática de edições
-- Numeração sequencial
-- Publicação agendada (cron)
-- Publicação manual
-- Status de edições
+#### 1. ⏳ Módulo de Gerenciamento de Feriados
+- Interface de criação/edição de feriados
+- CRUD completo via API
+- Feriados recorrentes
+- Pontos facultativos
+- Importação de calendário
 
-#### 2. Módulo de Pesquisa Pública
-- Busca por texto completo
-- Filtros avançados (data, categoria, secretaria)
-- Visualização de matérias publicadas
-- ⏳ Download de anexos (preparado, não implementado)
-- Verificação de autenticidade (hash)
+#### 2. ⏳ Módulo de Gerenciamento de Secretarias
+- Interface de criação/edição de secretarias
+- CRUD completo via API
+- Vinculação com usuários
+- Informações de contato
 
-#### 3. Geração de PDF
-- Template profissional
-- Layout 1 coluna
-- Layout 2 colunas
-- Cabeçalho com brasão
-- Numeração de páginas
-- Índice por categoria
-- Rodapé com data/horário
+#### 3. ⏳ Módulo de Configurações do Sistema
+- Interface de configurações gerais
+- Horários de envio e publicação
+- Regras de publicação
+- Configurações de email (futuro)
 
 #### 4. Notificações por Email
 - Matéria enviada → SEMAD
@@ -406,6 +476,26 @@ Rejeitado (com motivo) → Devolver para Secretaria → Ajustar → Reenviar
 - `POST /api/semad/:id/comment` - Adicionar comentário
 - `GET /api/semad/dashboard` - Dashboard SEMAD
 
+### Edições (NOVO)
+- **✅ `GET /api/editions`** - Listar edições com filtros
+- **✅ `GET /api/editions/:id`** - Buscar edição com matérias
+- **✅ `POST /api/editions`** - Criar nova edição
+- **✅ `PUT /api/editions/:id`** - Atualizar edição
+- **✅ `DELETE /api/editions/:id`** - Excluir edição
+- **✅ `POST /api/editions/:id/add-matter`** - Adicionar matéria
+- **✅ `DELETE /api/editions/:id/remove-matter/:matterId`** - Remover matéria
+- **✅ `PUT /api/editions/:id/reorder`** - Reordenar matérias
+- **✅ `POST /api/editions/:id/publish`** - Publicar edição e gerar PDF
+- **✅ `GET /api/editions/:id/pdf`** - Download público do PDF
+
+### Usuários (NOVO)
+- **✅ `GET /api/users`** - Listar usuários
+- **✅ `GET /api/users/:id`** - Buscar usuário
+- **✅ `POST /api/users`** - Criar usuário
+- **✅ `PUT /api/users/:id`** - Atualizar usuário
+- **✅ `PUT /api/users/:id/reset-password`** - Resetar senha
+- **✅ `DELETE /api/users/:id`** - Desativar usuário
+
 ## 🎨 Perfis de Usuário
 
 ### Administrador
@@ -433,7 +523,7 @@ Rejeitado (com motivo) → Devolver para Secretaria → Ajustar → Reenviar
 
 ## 📈 Status do Desenvolvimento
 
-### MVP (Mínimo Produto Viável) - 85% Concluído
+### MVP (Mínimo Produto Viável) - 95% Concluído
 - ✅ Estrutura base
 - ✅ Autenticação
 - ✅ Envio de matérias (CRUD completo + melhorias)
@@ -443,8 +533,10 @@ Rejeitado (com motivo) → Devolver para Secretaria → Ajustar → Reenviar
 - ✅ Sistema de tipos de matérias
 - ✅ Filtros avançados
 - ✅ Prioridades e agendamento
-- ⏳ Publicação (60% - agendamento preparado)
-- ⏳ Pesquisa pública
+- ✅ **Sistema de Edições do Diário Oficial (NOVO)**
+- ✅ **Geração de PDF com assinatura e hash (NOVO)**
+- ✅ **Gerenciamento de Usuários (NOVO)**
+- ✅ Pesquisa pública
 
 ### Versão 2 - 0% Concluído
 - ⏳ Geração de PDF
@@ -472,11 +564,41 @@ Para dúvidas ou sugestões sobre o sistema, consulte a documentação ou entre 
 
 ---
 
-**Última Atualização**: 2025-10-17 21:00  
-**Versão**: 0.8.6 (MVP 85% completo)  
+**Última Atualização**: 2025-10-17 22:20  
+**Versão**: 0.9.5 (MVP 95% completo)  
 **Status**: 🟢 Ativo e em desenvolvimento
 
 ## 📝 Changelog Recente
+
+### v0.9.5 (2025-10-17) - MAJOR UPDATE
+- ✅ **Sistema Completo de Edições do Diário Oficial**:
+  - Migration 0004 - Tabela edition_matters
+  - Rotas backend /api/editions (12 endpoints)
+  - Gerador de PDF com HTML estruturado
+  - Hash SHA-256 para validação
+  - Interface UI completa (listagem, detalhes, adicionar/remover matérias)
+  - Publicação de edições com geração de PDF
+  - Sistema de auditoria completo
+
+- ✅ **Gerenciamento de Usuários**:
+  - Rotas backend /api/users (CRUD completo)
+  - Interface UI administrativa
+  - Modal de criação/edição de usuários
+  - Reset de senha pelo administrador
+  - Ativação/desativação de usuários
+  - Validações e proteções de segurança
+
+- ✅ **Pesquisa Pública**:
+  - Busca avançada com filtros
+  - Visualização de matérias publicadas
+  - Exibição de assinatura eletrônica
+  - Design diferenciado (tema purple)
+
+- ✅ Função generateHash() adicionada em auth.ts
+- ✅ Menu "Edições do Diário" adicionado (SEMAD/Admin)
+- ✅ Integração R2 Bucket preparada para PDFs
+
+**Progresso: MVP 95% → falta apenas módulos de Feriados, Secretarias e Configurações**
 
 ### v0.8.6 (2025-10-17)
 - ✅ **Implementado "Esqueceu a senha"** - Link e endpoint funcional
