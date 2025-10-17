@@ -415,8 +415,9 @@ async function loadMyMatters(container) {
     
     container.innerHTML = `
         <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold text-gray-800">
+            <h2 class="text-2xl font-bold text-blue-700">
                 <i class="fas fa-file-alt mr-2"></i>Minhas Matérias
+                <span class="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full ml-2">Solicitante</span>
             </h2>
             <button 
                 onclick="loadView('newMatter')"
@@ -605,6 +606,44 @@ function clearMattersFilters() {
     if (dateInput) dateInput.value = '';
     
     filterMattersList();
+}
+
+// Filter SEMAD matters list
+function filterSemadList() {
+    const textFilter = document.getElementById('filterSemadText')?.value.toLowerCase() || '';
+    const typeFilter = document.getElementById('filterSemadType')?.value || '';
+    const dateFilter = document.getElementById('filterSemadDate')?.value || '';
+    
+    const items = document.querySelectorAll('.semad-matter-item');
+    
+    items.forEach(item => {
+        const title = item.dataset.title;
+        const type = item.dataset.type;
+        const date = item.dataset.date;
+        
+        const matchesText = !textFilter || title.includes(textFilter);
+        const matchesType = !typeFilter || type === typeFilter;
+        const matchesDate = !dateFilter || date === dateFilter;
+        
+        if (matchesText && matchesType && matchesDate) {
+            item.style.display = '';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+// Clear SEMAD filters
+function clearSemadFilters() {
+    const textInput = document.getElementById('filterSemadText');
+    const typeSelect = document.getElementById('filterSemadType');
+    const dateInput = document.getElementById('filterSemadDate');
+    
+    if (textInput) textInput.value = '';
+    if (typeSelect) typeSelect.value = '';
+    if (dateInput) dateInput.value = '';
+    
+    filterSemadList();
 }
 
 // View matter details
@@ -1022,16 +1061,16 @@ async function editMatter(id) {
 }
 
 async function deleteMatter(id) {
-    if (!confirm('Tem certeza que deseja excluir esta matéria?')) {
+    if (!confirm('Tem certeza que deseja excluir esta matéria?\n\nEsta ação não pode ser desfeita e será registrada no log de auditoria.')) {
         return;
     }
     
     try {
-        // TODO: Implementar rota DELETE no backend
-        alert('Funcionalidade de exclusão será implementada no backend');
+        await api.delete(`/matters/${id}`);
+        alert('Matéria excluída com sucesso!');
         loadView('myMatters');
     } catch (error) {
-        alert('Erro ao excluir matéria: ' + error.message);
+        alert(error.response?.data?.error || 'Erro ao excluir matéria');
     }
 }
 
@@ -1076,19 +1115,64 @@ async function cancelSubmission(id) {
 async function loadPendingReview(container) {
     const { data } = await api.get('/semad/pending');
     
+    const matterTypesOptions = state.matterTypes.map(mt => 
+        `<option value="${mt.id}">${mt.name}</option>`
+    ).join('');
+    
     container.innerHTML = `
-        <h2 class="text-2xl font-bold text-gray-800 mb-6">
+        <h2 class="text-2xl font-bold text-green-700 mb-6">
             <i class="fas fa-tasks mr-2"></i>Matérias Pendentes de Análise
+            <span class="text-sm bg-green-100 text-green-800 px-3 py-1 rounded-full ml-2">Aprovador</span>
         </h2>
         
-        <div class="bg-white rounded-lg shadow divide-y divide-gray-200">
-            ${data.matters.map(matter => `
-                <div class="p-4 hover:bg-gray-50">
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="p-4 border-b border-gray-200 bg-green-50">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <input 
+                        type="text" 
+                        id="filterSemadText"
+                        class="px-4 py-2 border border-gray-300 rounded-lg"
+                        placeholder="Buscar por título..."
+                        onkeyup="filterSemadList()"
+                    >
+                    <select 
+                        id="filterSemadType"
+                        class="px-4 py-2 border border-gray-300 rounded-lg"
+                        onchange="filterSemadList()"
+                    >
+                        <option value="">Todos os tipos</option>
+                        ${matterTypesOptions}
+                    </select>
+                    <input 
+                        type="date" 
+                        id="filterSemadDate"
+                        class="px-4 py-2 border border-gray-300 rounded-lg"
+                        onchange="filterSemadList()"
+                    >
+                </div>
+                <div class="flex justify-end mt-2">
+                    <button 
+                        onclick="clearSemadFilters()"
+                        class="text-sm text-gray-600 hover:text-gray-800"
+                    >
+                        <i class="fas fa-times mr-1"></i>Limpar filtros
+                    </button>
+                </div>
+            </div>
+            
+            <div class="divide-y divide-gray-200">
+            ${data.matters.map(matter => {
+                const matterTypeName = state.matterTypes.find(mt => mt.id === matter.matter_type_id)?.name || 'Sem tipo';
+                return `
+                <div class="p-4 hover:bg-gray-50 semad-matter-item"
+                     data-title="${matter.title.toLowerCase()}"
+                     data-type="${matter.matter_type_id || ''}"
+                     data-date="${matter.submitted_at ? matter.submitted_at.split('T')[0] : ''}">
                     <div class="flex justify-between items-start">
                         <div class="flex-1">
                             <h3 class="font-semibold text-gray-800">${matter.title}</h3>
                             <p class="text-sm text-gray-500 mt-1">
-                                ${matter.secretaria_acronym} - ${matter.author_name}
+                                <span class="font-medium text-green-600">${matterTypeName}</span> | ${matter.secretaria_acronym} - ${matter.author_name}
                             </p>
                             <p class="text-xs text-gray-400 mt-2">
                                 Enviado em: ${formatDate(matter.submitted_at)}
