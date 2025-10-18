@@ -148,41 +148,75 @@ editions.get('/:id', async (c) => {
 /**
  * POST /api/editions
  * Cria uma nova edição (apenas ADMIN e SEMAD)
+ * Suporta: edições normais e suplementares
+ * Data e número são AUTOMÁTICOS se não fornecidos
  */
 editions.post('/', requireRole('admin', 'semad'), async (c) => {
   try {
     const user = c.get('user');
-    let { edition_number, edition_date, year } = await c.req.json();
+    let { edition_number, edition_date, year, is_supplemental = false } = await c.req.json();
     
-    // Validações
-    if (!edition_date || !year) {
-      return c.json({ 
-        error: 'Campos obrigatórios: edition_date, year' 
-      }, 400);
+    // Data automática (hoje) se não fornecida
+    if (!edition_date) {
+      edition_date = new Date().toISOString().split('T')[0];
     }
     
-    // Se edition_number não for fornecido, gerar automaticamente
+    // Ano automático (ano atual) se não fornecido
+    if (!year) {
+      year = new Date().getFullYear();
+    }
+    
+    // Número automático se não fornecido
     if (!edition_number) {
-      // Buscar última edição do ano
-      const lastEdition = await c.env.DB.prepare(`
-        SELECT edition_number FROM editions 
-        WHERE year = ? 
-        ORDER BY CAST(substr(edition_number, 1, instr(edition_number, '/') - 1) AS INTEGER) DESC 
-        LIMIT 1
-      `).bind(parseInt(year)).first();
-      
-      let nextNumber = 1;
-      if (lastEdition && lastEdition.edition_number) {
-        // Extrair número da edição (ex: "001/2025" -> 1)
-        const match = (lastEdition.edition_number as string).match(/^(\d+)/);
-        if (match) {
-          nextNumber = parseInt(match[1]) + 1;
+      if (is_supplemental) {
+        // Para edição suplementar: buscar último suplemento do ano
+        const lastSupplement = await c.env.DB.prepare(`
+          SELECT edition_number, supplemental_number FROM editions 
+          WHERE year = ? AND is_supplemental = 1
+          ORDER BY CAST(COALESCE(supplemental_number, '0') AS INTEGER) DESC 
+          LIMIT 1
+        `).bind(parseInt(year)).first();
+        
+        let nextSupplementNumber = 1;
+        if (lastSupplement && lastSupplement.supplemental_number) {
+          nextSupplementNumber = parseInt(lastSupplement.supplemental_number as string) + 1;
         }
+        
+        // Formato: "001-A/2025" para suplementares
+        const paddedNumber = nextSupplementNumber.toString().padStart(3, '0');
+        edition_number = `${paddedNumber}-A/${year}`;
+        
+      } else {
+        // Para edição normal: buscar última edição normal do ano
+        const lastEdition = await c.env.DB.prepare(`
+          SELECT edition_number FROM editions 
+          WHERE year = ? AND (is_supplemental = 0 OR is_supplemental IS NULL)
+          ORDER BY CAST(substr(edition_number, 1, instr(edition_number, '/') - 1) AS INTEGER) DESC 
+          LIMIT 1
+        `).bind(parseInt(year)).first();
+        
+        let nextNumber = 1;
+        if (lastEdition && lastEdition.edition_number) {
+          // Extrair número da edição (ex: "001/2025" -> 1)
+          const match = (lastEdition.edition_number as string).match(/^(\d+)/);
+          if (match) {
+            nextNumber = parseInt(match[1]) + 1;
+          }
+        }
+        
+        // Formato: "001/2025"
+        const paddedNumber = nextNumber.toString().padStart(3, '0');
+        edition_number = `${paddedNumber}/${year}`;
       }
-      
-      // Formatar com zeros à esquerda (3 dígitos)
-      const paddedNumber = nextNumber.toString().padStart(3, '0');
-      edition_number = `${paddedNumber}/${year}`;
+    }
+    
+    // Extrair supplemental_number se for suplementar
+    let supplemental_number = null;
+    if (is_supplemental) {
+      const match = edition_number.match(/^(\d+)-[A-Z]\//);
+      if (match) {
+        supplemental_number = match[1];
+      }
     }
     
     // Verificar se já existe edição com esse número
@@ -198,9 +232,16 @@ editions.post('/', requireRole('admin', 'semad'), async (c) => {
     const result = await c.env.DB.prepare(`
       INSERT INTO editions (
         edition_number, edition_date, year, status,
+        is_supplemental, supplemental_number,
         created_at, updated_at
-      ) VALUES (?, ?, ?, 'draft', datetime('now'), datetime('now'))
-    `).bind(edition_number, edition_date, parseInt(year)).run();
+      ) VALUES (?, ?, ?, 'draft', ?, ?, datetime('now'), datetime('now'))
+    `).bind(
+      edition_number, 
+      edition_date, 
+      parseInt(year), 
+      is_supplemental ? 1 : 0,
+      supplemental_number
+    ).run();
     
     const editionId = result.meta.last_row_id;
     
@@ -218,18 +259,19 @@ editions.post('/', requireRole('admin', 'semad'), async (c) => {
       'edition',
       editionId,
       'create',
-      JSON.stringify({ edition_number, edition_date, year }),
+      JSON.stringify({ edition_number, edition_date, year, is_supplemental }),
       ipAddress,
       userAgent
     ).run();
     
     return c.json({
-      message: 'Edição criada com sucesso',
+      message: is_supplemental ? 'Edição suplementar criada com sucesso' : 'Edição criada com sucesso',
       edition: {
         id: editionId,
         edition_number,
         edition_date,
         year,
+        is_supplemental,
         status: 'draft'
       }
     }, 201);

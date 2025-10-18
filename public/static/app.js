@@ -2812,13 +2812,15 @@ async function loadSystemSettings(container) {
 function generateSettingsCards(settings) {
     // Agrupar configurações por prefixo da key
     const categoryNames = {
+        expediente: { name: 'EXPEDIENTE (Última Página)', icon: 'id-card', color: 'indigo' },
+        diario: { name: 'Cabeçalho do Diário', icon: 'newspaper', color: 'purple' },
         prefeitura: { name: 'Dados da Prefeitura', icon: 'building', color: 'blue' },
-        dom: { name: 'Diário Oficial', icon: 'newspaper', color: 'purple' },
+        dom: { name: 'Diário Oficial (Geral)', icon: 'book', color: 'cyan' },
         edicao: { name: 'Edições e Numeração', icon: 'hashtag', color: 'indigo' },
         pdf: { name: 'Configurações de PDF', icon: 'file-pdf', color: 'red' },
         assinatura: { name: 'Assinatura Digital', icon: 'signature', color: 'green' },
+        prazos: { name: 'Prazos', icon: 'clock', color: 'orange' },
         notif: { name: 'Notificações', icon: 'bell', color: 'yellow' },
-        prazo: { name: 'Prazos', icon: 'clock', color: 'orange' },
         acesso: { name: 'Acesso Público', icon: 'globe', color: 'teal' },
         auditoria: { name: 'Auditoria', icon: 'shield-alt', color: 'gray' },
         backup: { name: 'Backup', icon: 'database', color: 'cyan' },
@@ -3109,7 +3111,10 @@ function renderEditionsTable(editions) {
                 ${editions.map(edition => `
                     <tr class="hover:bg-gray-50 edition-row" data-status="${edition.status}" data-year="${edition.year}">
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="font-semibold text-gray-900">${edition.edition_number}</span>
+                            <div class="flex items-center gap-2">
+                                <span class="font-semibold text-gray-900">${edition.edition_number}</span>
+                                ${edition.is_supplemental ? '<span class="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full font-medium">SUPLEMENTAR</span>' : ''}
+                            </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-gray-700">
                             ${new Date(edition.edition_date).toLocaleDateString('pt-BR')}
@@ -3193,21 +3198,118 @@ function clearEditionFilters() {
 }
 
 async function showNewEditionModal() {
-    const editionNumber = prompt('Número da edição (ex: 001/2025):');
-    if (!editionNumber) return;
+    const modal = document.createElement('div');
+    modal.id = 'newEditionModal';
+    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg shadow-2xl p-8 max-w-lg w-full mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-gray-800">
+                    <i class="fas fa-plus-circle text-blue-600 mr-2"></i>
+                    Nova Edição
+                </h3>
+                <button onclick="closeNewEditionModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="newEditionForm" class="space-y-6">
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p class="text-sm text-blue-800">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        <strong>Data e Número Automáticos!</strong><br>
+                        Se você deixar os campos vazios, o sistema irá:
+                        <ul class="mt-2 ml-6 list-disc">
+                            <li>Usar a data de hoje</li>
+                            <li>Gerar o próximo número sequencial do ano</li>
+                        </ul>
+                    </p>
+                </div>
+                
+                <div>
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        <input type="checkbox" id="isSupplemental" class="w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500">
+                        <div>
+                            <span class="text-sm font-medium text-gray-700">Edição Suplementar</span>
+                            <p class="text-xs text-gray-500">Edições extras fora da numeração normal (001-A/2025, 002-A/2025, etc.)</p>
+                        </div>
+                    </label>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Número da Edição <span class="text-gray-400">(opcional)</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="editionNumber" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="Ex: 001/2025 ou deixe vazio para auto"
+                    >
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Data da Edição <span class="text-gray-400">(opcional)</span>
+                    </label>
+                    <input 
+                        type="date" 
+                        id="editionDate" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="Deixe vazio para usar hoje"
+                    >
+                </div>
+                
+                <div class="flex space-x-3 pt-4">
+                    <button 
+                        type="submit"
+                        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition"
+                    >
+                        <i class="fas fa-check mr-2"></i>Criar Edição
+                    </button>
+                    <button 
+                        type="button"
+                        onclick="closeNewEditionModal()"
+                        class="px-6 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 rounded-lg transition"
+                    >
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
     
-    const editionDate = prompt('Data da edição (YYYY-MM-DD):');
-    if (!editionDate) return;
+    document.body.appendChild(modal);
     
-    const year = new Date(editionDate).getFullYear();
-    
-    try {
-        await api.post('/editions', { edition_number: editionNumber, edition_date: editionDate, year });
-        alert('Edição criada com sucesso!');
-        loadView('editions');
-    } catch (error) {
-        alert(error.response?.data?.error || 'Erro ao criar edição');
-    }
+    document.getElementById('newEditionForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const editionNumber = document.getElementById('editionNumber').value.trim() || null;
+        const editionDate = document.getElementById('editionDate').value || null;
+        const isSupplemental = document.getElementById('isSupplemental').checked;
+        
+        // Extrair ano da data se fornecida, senão usar ano atual
+        const year = editionDate ? new Date(editionDate).getFullYear() : new Date().getFullYear();
+        
+        try {
+            const { data } = await api.post('/editions', { 
+                edition_number: editionNumber, 
+                edition_date: editionDate,
+                year,
+                is_supplemental: isSupplemental
+            });
+            
+            alert(`${data.message}\n\nEdição: ${data.edition.edition_number}\nData: ${data.edition.edition_date}`);
+            closeNewEditionModal();
+            loadView('editions');
+        } catch (error) {
+            alert(error.response?.data?.error || 'Erro ao criar edição');
+        }
+    });
+}
+
+function closeNewEditionModal() {
+    document.getElementById('newEditionModal')?.remove();
 }
 
 async function editEdition(id) {
