@@ -3274,7 +3274,7 @@ async function viewEdition(id) {
                                 <button onclick="downloadEditionPDF(${data.id}, '${data.edition_number}', ${data.year})" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg">
                                     <i class="fas fa-file-pdf mr-2"></i>Download PDF/HTML
                                 </button>
-                                <button onclick="loadView('verificar')" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg">
+                                <button onclick="loadView('verification')" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg">
                                     <i class="fas fa-shield-alt mr-2"></i>Verificar Autenticidade
                                 </button>
                             </div>
