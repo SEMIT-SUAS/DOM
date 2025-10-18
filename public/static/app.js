@@ -1964,27 +1964,27 @@ async function showNewUserModal() {
                 <form id="userForm" class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
-                        <input type="text" id="userName" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        <input type="text" id="newUserName" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                     </div>
                     
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-                        <input type="email" id="userEmail" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        <input type="email" id="newUserEmail" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                     </div>
                     
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">CPF (opcional)</label>
-                        <input type="text" id="userCpf" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="000.000.000-00">
+                        <input type="text" id="newUserCpf" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="000.000.000-00">
                     </div>
                     
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Senha *</label>
-                        <input type="password" id="userPassword" required minlength="6" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Mínimo 6 caracteres">
+                        <input type="password" id="newUserPassword" required minlength="6" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Mínimo 6 caracteres">
                     </div>
                     
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Perfil *</label>
-                        <select id="userRole" required class="w-full px-4 py-2 border border-gray-300 rounded-lg" onchange="toggleSecretariaField()">
+                        <select id="newUserRole" required class="w-full px-4 py-2 border border-gray-300 rounded-lg" onchange="toggleSecretariaField()">
                             <option value="">Selecione...</option>
                             <option value="admin">Administrador</option>
                             <option value="semad">SEMAD</option>
@@ -1993,9 +1993,9 @@ async function showNewUserModal() {
                         </select>
                     </div>
                     
-                    <div id="secretariaField" style="display:none;">
+                    <div id="newSecretariaField" style="display:none;">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Secretaria *</label>
-                        <select id="userSecretaria" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        <select id="newUserSecretaria" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                             <option value="">Selecione...</option>
                             ${secretariasOptions}
                         </select>
@@ -2018,9 +2018,9 @@ async function showNewUserModal() {
     
     // Toggle secretaria field based on role
     window.toggleSecretariaField = function() {
-        const role = document.getElementById('userRole').value;
-        const secretariaField = document.getElementById('secretariaField');
-        const secretariaSelect = document.getElementById('userSecretaria');
+        const role = document.getElementById('newUserRole').value;
+        const secretariaField = document.getElementById('newSecretariaField');
+        const secretariaSelect = document.getElementById('newUserSecretaria');
         
         if (role === 'secretaria') {
             secretariaField.style.display = 'block';
@@ -2035,12 +2035,12 @@ async function showNewUserModal() {
     document.getElementById('userForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        const nameInput = document.getElementById('userName');
-        const emailInput = document.getElementById('userEmail');
-        const cpfInput = document.getElementById('userCpf');
-        const passwordInput = document.getElementById('userPassword');
-        const roleInput = document.getElementById('userRole');
-        const secretariaInput = document.getElementById('userSecretaria');
+        const nameInput = document.getElementById('newUserName');
+        const emailInput = document.getElementById('newUserEmail');
+        const cpfInput = document.getElementById('newUserCpf');
+        const passwordInput = document.getElementById('newUserPassword');
+        const roleInput = document.getElementById('newUserRole');
+        const secretariaInput = document.getElementById('newUserSecretaria');
         
         console.log('Form elements:', {
             nameInput, emailInput, passwordInput, roleInput, secretariaInput
