@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limpar Cache - DOM</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2563eb;
+            margin-bottom: 20px;
+        }
+        .step {
+            background: #f0f9ff;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #2563eb;
+            border-radius: 5px;
+        }
+        .step h3 {
+            margin-top: 0;
+            color: #1e40af;
+        }
+        code {
+            background: #1f2937;
+            color: #10b981;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        .warning {
+            background: #fef3c7;
+            border-left-color: #f59e0b;
+            color: #92400e;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #1e40af;
+        }
+        .success {
+            background: #d1fae5;
+            border-left-color: #10b981;
+            color: #065f46;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Como Limpar o Cache do Navegador</h1>
+        
+        <div class="step warning">
+            <h3>⚠️ PROBLEMA ATUAL:</h3>
+            <p>O navegador está usando uma versão <strong>ANTIGA</strong> do JavaScript (app.js).</p>
+            <p>Por isso o formulário de editar usuário não envia os campos <code>name</code> e <code>role</code>.</p>
+        </div>
+
+        <div class="step">
+            <h3>🚀 SOLUÇÃO RÁPIDA (Chrome/Edge/Brave):</h3>
+            <ol>
+                <li>Pressione <code>Ctrl + Shift + Delete</code> (ou <code>Cmd + Shift + Delete</code> no Mac)</li>
+                <li>Selecione <strong>"Cached images and files"</strong></li>
+                <li>Selecione período: <strong>"All time"</strong></li>
+                <li>Clique em <strong>"Clear data"</strong></li>
+                <li>Feche e abra o navegador novamente</li>
+            </ol>
+            <button onclick="clearAndReload()">Limpar Cache Agora</button>
+        </div>
+
+        <div class="step">
+            <h3>🔄 SOLUÇÃO ALTERNATIVA 1 - Hard Reload:</h3>
+            <ol>
+                <li>Pressione <code>F12</code> para abrir DevTools</li>
+                <li>Clique com <strong>botão direito</strong> no ícone de reload 🔄</li>
+                <li>Selecione <strong>"Empty Cache and Hard Reload"</strong></li>
+            </ol>
+            <button onclick="location.reload(true)">Hard Reload</button>
+        </div>
+
+        <div class="step">
+            <h3>🧪 SOLUÇÃO ALTERNATIVA 2 - Modo Anônimo:</h3>
+            <ol>
+                <li>Abra uma janela <strong>anônima/privada</strong>:</li>
+                <li>Chrome/Edge: <code>Ctrl + Shift + N</code></li>
+                <li>Firefox: <code>Ctrl + Shift + P</code></li>
+                <li>Acesse o sistema normalmente</li>
+            </ol>
+        </div>
+
+        <div class="step">
+            <h3>🔧 SOLUÇÃO ALTERNATIVA 3 - Disable Cache no DevTools:</h3>
+            <ol>
+                <li>Pressione <code>F12</code> para abrir DevTools</li>
+                <li>Vá na aba <strong>"Network"</strong></li>
+                <li>Marque o checkbox <strong>"Disable cache"</strong></li>
+                <li>Mantenha o DevTools aberto e recarregue a página</li>
+            </ol>
+        </div>
+
+        <div class="step success">
+            <h3>✅ COMO SABER SE FUNCIONOU:</h3>
+            <p>Depois de limpar o cache, ao editar um usuário você deve ver:</p>
+            <ul>
+                <li>✅ Campo <strong>"Nome"</strong></li>
+                <li>✅ Campo <strong>"Email"</strong></li>
+                <li>✅ Campo <strong>"CPF"</strong></li>
+                <li>✅ Campo <strong>"Perfil"</strong></li>
+                <li>✅ Campo <strong>"Secretaria"</strong> (novo!)</li>
+                <li>✅ Checkbox <strong>"Usuário Ativo"</strong></li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>🌐 Testar Agora:</h3>
+            <button onclick="window.location.href='https://3000-iulmtf85zcwx4g6bfvptm-cc2fbc16.sandbox.novita.ai'">
+                Ir para DOM (com cache limpo)
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function clearAndReload() {
+            // Tentar limpar cache via JavaScript (limitado)
+            if ('caches' in window) {
+                caches.keys().then(names => {
+                    names.forEach(name => caches.delete(name));
+                });
+            }
+            
+            // Adicionar timestamp para forçar reload
+            const url = new URL(window.location.href);
+            url.searchParams.set('_', Date.now());
+            
+            alert('Cache limpo! Recarregando...');
+            window.location.href = url.toString();
+        }
+    </script>
+</body>
+</html>

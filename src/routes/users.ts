@@ -149,6 +149,15 @@ users.put('/:id', async (c) => {
     // DEBUG: Log dos dados recebidos
     console.log('PUT /api/users/:id - Dados recebidos:', JSON.stringify(bodyData));
     
+    // VALIDAÇÃO: Campos obrigatórios
+    if (!name || !email || !role) {
+      console.error('PUT /api/users/:id - ERRO: Campos obrigatórios faltando!', { name, email, role });
+      return c.json({ 
+        error: 'Campos obrigatórios faltando', 
+        details: 'name, email e role são obrigatórios. LIMPE O CACHE DO NAVEGADOR (Ctrl+Shift+R)!' 
+      }, 400);
+    }
+    
     // Verificar se usuário existe
     const user = await c.env.DB.prepare(
       'SELECT * FROM users WHERE id = ?'
