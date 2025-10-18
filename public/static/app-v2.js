@@ -2117,6 +2117,9 @@ async function editUser(id) {
         modal.innerHTML = `
             <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" id="userModal">
                 <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4 max-h-screen overflow-y-auto">
+                    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+                        ✅ CÓDIGO ATUALIZADO - Versão app-v2.js carregada!
+                    </div>
                     <h3 class="text-xl font-bold text-gray-800 mb-4">Editar Usuário</h3>
                     
                     <form id="userForm" class="space-y-4">
@@ -2214,6 +2217,10 @@ async function editUser(id) {
                 secretaria_id: secretariaValue ? parseInt(secretariaValue) : null,
                 active: document.getElementById('userActive').checked ? 1 : 0
             };
+            
+            console.log('🔍 FRONTEND - Dados que serão enviados:', userData);
+            console.log('🔍 Elemento userName existe?', document.getElementById('userName'));
+            console.log('🔍 Elemento userRole existe?', document.getElementById('userRole'));
             
             try {
                 await api.put(`/users/${id}`, userData);

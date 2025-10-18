@@ -144,27 +144,28 @@ users.put('/:id', async (c) => {
     const admin = c.get('user');
     const id = parseInt(c.req.param('id'));
     const bodyData = await c.req.json();
-    const { name, email, cpf, role, secretaria_id, active } = bodyData;
+    let { name, email, cpf, role, secretaria_id, active } = bodyData;
     
     // DEBUG: Log dos dados recebidos
     console.log('PUT /api/users/:id - Dados recebidos:', JSON.stringify(bodyData));
     
-    // VALIDAÇÃO: Campos obrigatórios
-    if (!name || !email || !role) {
-      console.error('PUT /api/users/:id - ERRO: Campos obrigatórios faltando!', { name, email, role });
-      return c.json({ 
-        error: 'Campos obrigatórios faltando', 
-        details: 'name, email e role são obrigatórios. LIMPE O CACHE DO NAVEGADOR (Ctrl+Shift+R)!' 
-      }, 400);
-    }
-    
-    // Verificar se usuário existe
+    // Verificar se usuário existe e pegar valores atuais
     const user = await c.env.DB.prepare(
       'SELECT * FROM users WHERE id = ?'
     ).bind(id).first();
     
     if (!user) {
       return c.json({ error: 'Usuário não encontrado' }, 404);
+    }
+    
+    // Se campos não foram enviados, usar valores atuais do banco
+    name = name || user.name;
+    email = email || user.email;
+    role = role || user.role;
+    
+    // Validação mínima - só email é realmente obrigatório
+    if (!email) {
+      return c.json({ error: 'Email é obrigatório' }, 400);
     }
     
     // Não permitir que usuário desative a si mesmo
@@ -177,8 +178,10 @@ users.put('/:id', async (c) => {
       ? parseInt(String(secretaria_id)) 
       : null;
     
-    // Garantir que active seja 0 ou 1
-    const finalActive = (active === true || active === 1 || active === '1') ? 1 : 0;
+    // Garantir que active seja 0 ou 1 - se não fornecido, manter valor atual
+    const finalActive = (active !== undefined) 
+      ? ((active === true || active === 1 || active === '1') ? 1 : 0)
+      : user.active;
     
     console.log('PUT /api/users/:id - Valores finais:', {
       name, email, cpf: cpf || null, role, 
