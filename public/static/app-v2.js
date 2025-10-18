@@ -1872,7 +1872,8 @@ async function viewPublicMatter(id) {
 
 async function loadUsersManagement(container) {
     try {
-        const { data } = await api.get('/users');
+        // Adicionar timestamp para evitar cache
+        const { data } = await api.get(`/users?_t=${Date.now()}`);
         
         container.innerHTML = `
             <div class="mb-6">
@@ -2149,7 +2150,10 @@ async function editUser(id) {
                         </div>
                         
                         <div id="secretariaFieldContainer">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Secretaria</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Secretaria 
+                                ${user.role === 'secretaria' ? '<span class="text-red-500">*</span>' : ''}
+                            </label>
                             <select id="userSecretaria" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                                 <option value="">-- Nenhuma --</option>
                                 ${secretarias.map(s => `
@@ -2158,7 +2162,9 @@ async function editUser(id) {
                                     </option>
                                 `).join('')}
                             </select>
-                            <p class="text-xs text-gray-500 mt-1">Obrigatório para usuários do tipo "Secretaria"</p>
+                            <p class="text-xs text-gray-500 mt-1" id="secretariaHelp">
+                                ${user.role === 'secretaria' ? '⚠️ Obrigatório para perfil "Secretaria"' : 'Opcional para este perfil'}
+                            </p>
                         </div>
                         
                         <div class="flex items-center">
@@ -2184,13 +2190,31 @@ async function editUser(id) {
         // Mostrar/esconder campo secretaria baseado no perfil
         const roleSelect = document.getElementById('userRole');
         const secretariaField = document.getElementById('secretariaFieldContainer');
+        const secretariaSelect = document.getElementById('userSecretaria');
+        const secretariaHelp = document.getElementById('secretariaHelp');
+        const secretariaLabel = secretariaField.querySelector('label');
         
         function toggleSecretariaField() {
             const role = roleSelect.value;
-            if (role === 'secretaria' || role === 'semad') {
+            // Mostrar campo se: perfil é secretaria/semad OU usuário já tem secretaria associada
+            if (role === 'secretaria' || role === 'semad' || user.secretaria_id) {
                 secretariaField.style.display = 'block';
+                
+                // Tornar obrigatório apenas para perfil "secretaria"
+                if (role === 'secretaria') {
+                    secretariaSelect.required = true;
+                    secretariaLabel.innerHTML = 'Secretaria <span class="text-red-500">*</span>';
+                    secretariaHelp.innerHTML = '⚠️ Obrigatório para perfil "Secretaria"';
+                    secretariaHelp.className = 'text-xs text-red-600 mt-1';
+                } else {
+                    secretariaSelect.required = false;
+                    secretariaLabel.innerHTML = 'Secretaria';
+                    secretariaHelp.innerHTML = 'Opcional para este perfil';
+                    secretariaHelp.className = 'text-xs text-gray-500 mt-1';
+                }
             } else {
                 secretariaField.style.display = 'none';
+                secretariaSelect.required = false;
             }
         }
         
