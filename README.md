@@ -637,11 +637,39 @@ Para dúvidas ou sugestões sobre o sistema, consulte a documentação ou entre 
 
 ---
 
-**Última Atualização**: 2025-10-18 00:40  
-**Versão**: 1.1.0 (TODAS AS 6 TAREFAS COMPLETADAS) 🚀  
+**Última Atualização**: 2025-10-18 09:55  
+**Versão**: 1.1.1 (CORREÇÕES CRÍTICAS DE AUTENTICAÇÃO) 🔧  
 **Status**: 🟢 100% Funcional e Pronto!
 
 ## 📝 Changelog Recente
+
+### v1.1.1 (2025-10-18) - CORREÇÕES CRÍTICAS! 🔧
+
+**🐛 Bugs Críticos Corrigidos:**
+
+1. **✅ Logo Público (401 → 200 OK)**:
+   - **Problema**: GET `/api/settings/logo` retornava 401 Unauthorized
+   - **Solução**: Movido endpoint ANTES do middleware de autenticação
+   - **Resultado**: Logo agora é público e acessível sem login
+
+2. **✅ Secretarias Públicas (403 → 200 OK)**:
+   - **Problema**: GET `/api/secretarias` exigia role admin/semad, bloqueando filtros no frontend
+   - **Solução**: Endpoint movido ANTES do middleware, retorna apenas dados básicos (id, name, acronym, active)
+   - **Resultado**: Lista de secretarias público para uso em filtros
+
+3. **✅ Dias Úteis Configuráveis (Sábado permitido)**:
+   - **Problema**: Validação de dias úteis estava hardcoded para bloquear sábados/domingos
+   - **Solução**: Implementada leitura de `prazos_dias_uteis` do banco de dados
+   - **Configuração Atual**: `[0,1,2,3,4,5,6]` - Todos os dias permitidos
+   - **Administrável**: Admin pode configurar quais dias são úteis pela interface
+   - **Resultado**: Envio de matérias agora respeita configuração do sistema
+
+**Configurações Adicionadas:**
+- `prazos_dias_uteis` - Array com dias da semana úteis (0=Domingo, 1=Segunda...6=Sábado)
+- Valor padrão: `[0,1,2,3,4,5,6]` (todos os dias)
+- Editável pela interface de Configurações do Sistema
+
+**Impacto:** Sistema agora completamente funcional para envio aos sábados conforme configurado!
 
 ### v1.1.0 (2025-10-18) - TAREFAS EXPLÍCITAS COMPLETADAS! 🚀
 
