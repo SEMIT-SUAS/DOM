@@ -32,20 +32,38 @@ editions.get('/:id/pdf', async (c) => {
         s.name as secretaria_name,
         s.acronym as secretaria_acronym,
         u.name as author_name,
-        em.display_order
+        em.display_order,
+        mt.name as matter_type_name
       FROM edition_matters em
       INNER JOIN matters m ON em.matter_id = m.id
       LEFT JOIN secretarias s ON m.secretaria_id = s.id
       LEFT JOIN users u ON m.author_id = u.id
+      LEFT JOIN matter_types mt ON m.matter_type_id = mt.id
       WHERE em.edition_id = ?
       ORDER BY em.display_order ASC
     `).bind(id).all();
+    
+    // Buscar anexos de cada matéria
+    const mattersWithAttachments = await Promise.all(
+      (matters as any[]).map(async (matter) => {
+        const { results: attachments } = await c.env.DB.prepare(`
+          SELECT id, filename, file_url, file_size, file_type, original_name
+          FROM attachments
+          WHERE matter_id = ?
+        `).bind(matter.id).all();
+        
+        return {
+          ...matter,
+          attachments: attachments || []
+        };
+      })
+    );
     
     // Gerar PDF novamente (contém o HTML)
     const { generateEditionPDF } = await import('../utils/pdf-generator');
     const pdfResult = await generateEditionPDF(c.env.R2, {
       edition: edition as any,
-      matters: matters as any[]
+      matters: mattersWithAttachments as any[]
     }, c.env.DB);
     
     // Retornar HTML diretamente para download

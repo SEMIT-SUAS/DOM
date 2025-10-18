@@ -37,6 +37,14 @@ interface EditionData {
     signed_at?: string;
     signed_by?: number;
     signature_hash?: string;
+    attachments?: Array<{
+      id: number;
+      filename: string;
+      file_url: string;
+      file_size?: number;
+      file_type?: string;
+      original_name?: string;
+    }>;
   }>;
 }
 
@@ -51,7 +59,7 @@ interface PDFResult {
  * Gera o HTML completo da edição do Diário Oficial
  * Seguindo o layout do PDF real de São Luís
  */
-function generateEditionHTML(data: EditionData, validationHash: string, logoUrl: string = ''): string {
+function generateEditionHTML(data: EditionData, validationHash: string, logoUrl: string = '', expediente: string = ''): string {
   const { edition, matters } = data;
   
   // Formatar data para exibição (ex: QUINTA * 16 DE OUTUBRO DE 2025)
@@ -114,13 +122,18 @@ function generateEditionHTML(data: EditionData, validationHash: string, logoUrl:
             ${sortedTypes.map(typeName => {
               const mattersList = types[typeName];
               
-              return mattersList.map(m => `
-                <div class="index-item">
-                  <span class="index-item-title">${m.title.toUpperCase()}</span>
-                  <span class="index-item-dots">.................................................................</span>
-                  <span class="index-item-page">${m.page}</span>
+              return `
+                <div class="index-type">
+                  <h4 class="index-type-name">${typeName.toUpperCase()}</h4>
+                  ${mattersList.map(m => `
+                    <div class="index-item">
+                      <span class="index-item-title">${m.title.toUpperCase()}</span>
+                      <span class="index-item-dots">.................................................................</span>
+                      <span class="index-item-page">${m.page}</span>
+                    </div>
+                  `).join('')}
                 </div>
-              `).join('');
+              `;
             }).join('')}
           </div>
         `;
@@ -146,6 +159,22 @@ function generateEditionHTML(data: EditionData, validationHash: string, logoUrl:
           ${matter.content}
         </div>
         
+        ${matter.attachments && matter.attachments.length > 0 ? `
+          <div class="matter-attachments">
+            <h4 class="attachments-title">Anexos:</h4>
+            <ul class="attachments-list">
+              ${matter.attachments.map(att => `
+                <li class="attachment-item">
+                  <a href="${att.file_url}" target="_blank" class="attachment-link">
+                    📎 ${att.original_name || att.filename}
+                    ${att.file_size ? ` (${(att.file_size / 1024).toFixed(2)} KB)` : ''}
+                  </a>
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        ` : ''}
+        
         <div class="matter-footer">
           <div class="signature-info">
             ${matter.signed_at ? `
@@ -154,7 +183,7 @@ function generateEditionHTML(data: EditionData, validationHash: string, logoUrl:
             ` : ''}
           </div>
           <div class="author-info">
-            <p><strong>Responsável:</strong> ${matter.author_name}</p>
+            <p><strong>Publicado por:</strong> ${matter.author_name} - ${matter.secretaria_acronym}</p>
           </div>
         </div>
       </article>
@@ -237,10 +266,12 @@ function generateEditionHTML(data: EditionData, validationHash: string, logoUrl:
     }
     
     .edition-header .logo {
-      width: 80px;
-      height: 80px;
+      width: 100px;
+      height: 100px;
       margin: 0 auto 0.5rem;
       display: block;
+      object-fit: contain;
+      border-radius: 4px;
     }
     
     .logo-placeholder {
@@ -264,6 +295,33 @@ function generateEditionHTML(data: EditionData, validationHash: string, logoUrl:
       font-size: 11pt;
       color: #666;
       margin-top: 0.3rem;
+    }
+    
+    /* Expediente */
+    .expediente-section {
+      margin: 1rem 0;
+      padding: 1rem;
+      background-color: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      page-break-after: avoid;
+    }
+    
+    .expediente-title {
+      font-size: 12pt;
+      font-weight: bold;
+      color: #0066cc;
+      text-align: center;
+      margin-bottom: 0.8rem;
+      text-transform: uppercase;
+    }
+    
+    .expediente-content {
+      font-size: 9pt;
+      line-height: 1.5;
+      color: #333;
+      text-align: justify;
+      white-space: pre-wrap;
     }
     
     /* Índice - Estilo do PDF real */
@@ -296,9 +354,25 @@ function generateEditionHTML(data: EditionData, validationHash: string, logoUrl:
       font-size: 11pt;
       font-weight: bold;
       color: #000;
-      margin-bottom: 0.3rem;
+      margin-bottom: 0.5rem;
       text-transform: uppercase;
       padding: 0.2rem 0;
+    }
+    
+    .index-type {
+      margin-bottom: 0.8rem;
+      margin-left: 1rem;
+      page-break-inside: avoid;
+    }
+    
+    .index-type-name {
+      font-size: 10pt;
+      font-weight: bold;
+      color: #0066cc;
+      margin-bottom: 0.3rem;
+      text-transform: uppercase;
+      padding-left: 0.5rem;
+      border-left: 3px solid #0066cc;
     }
     
     .index-item {
@@ -306,6 +380,7 @@ function generateEditionHTML(data: EditionData, validationHash: string, logoUrl:
       grid-template-columns: 1fr auto auto;
       gap: 0.5rem;
       padding: 0.15rem 0;
+      padding-left: 0.5rem;
       font-size: 9pt;
       line-height: 1.3;
       align-items: center;
@@ -417,6 +492,44 @@ function generateEditionHTML(data: EditionData, validationHash: string, logoUrl:
     .matter-content table th {
       background-color: #f3f4f6;
       font-weight: bold;
+    }
+    
+    /* Anexos */
+    .matter-attachments {
+      margin-top: 1rem;
+      padding: 0.8rem;
+      background-color: #f8fafc;
+      border-left: 3px solid #0066cc;
+      border-radius: 4px;
+      page-break-inside: avoid;
+    }
+    
+    .attachments-title {
+      font-size: 10pt;
+      font-weight: bold;
+      color: #0066cc;
+      margin-bottom: 0.5rem;
+    }
+    
+    .attachments-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    
+    .attachment-item {
+      margin-bottom: 0.3rem;
+      font-size: 9pt;
+    }
+    
+    .attachment-link {
+      color: #0066cc;
+      text-decoration: underline;
+      word-break: break-all;
+    }
+    
+    .attachment-link:hover {
+      color: #004499;
     }
     
     /* Layout de colunas */
@@ -579,6 +692,13 @@ function generateEditionHTML(data: EditionData, validationHash: string, logoUrl:
     </div>
   </header>
   
+  ${expediente ? `
+  <section class="expediente-section">
+    <h2 class="expediente-title">EXPEDIENTE</h2>
+    <div class="expediente-content">${expediente}</div>
+  </section>
+  ` : ''}
+  
   ${indexHTML}
   
   <main class="edition-content">
@@ -649,27 +769,56 @@ export async function generateEditionPDF(
   db: D1Database
 ): Promise<PDFResult> {
   try {
-    // Buscar logo da prefeitura do sistema de configurações
+    // Buscar logo e expediente da prefeitura do sistema de configurações
     let logoUrl = '';
+    let expedienteText = '';
+    
     try {
       const logoSetting = await db.prepare(
         "SELECT value FROM system_settings WHERE key = 'logo_url'"
       ).first();
       
       if (logoSetting && logoSetting.value) {
-        // O value está em JSON, precisa fazer parse
-        logoUrl = JSON.parse(logoSetting.value as string);
+        const value = logoSetting.value as string;
+        // Se já é data:image, usar direto; se é JSON, fazer parse
+        if (value.startsWith('data:image')) {
+          logoUrl = value;
+        } else {
+          try {
+            logoUrl = JSON.parse(value);
+          } catch {
+            logoUrl = value; // Usar direto se não for JSON
+          }
+        }
       }
     } catch (logoError) {
       console.warn('Logo não encontrado nas configurações:', logoError);
       // Continua sem logo se não encontrar
     }
     
+    try {
+      const expedienteSetting = await db.prepare(
+        "SELECT value FROM system_settings WHERE key = 'expediente'"
+      ).first();
+      
+      if (expedienteSetting && expedienteSetting.value) {
+        const value = expedienteSetting.value as string;
+        try {
+          expedienteText = JSON.parse(value);
+        } catch {
+          expedienteText = value; // Usar direto se não for JSON
+        }
+      }
+    } catch (expError) {
+      console.warn('Expediente não encontrado nas configurações:', expError);
+      // Continua sem expediente se não encontrar
+    }
+    
     // Gerar hash do conteúdo PRIMEIRO
     const contentHash = await generateEditionHash(data.edition, data.matters);
     
-    // Gerar HTML da edição com o hash já calculado e o logo
-    const htmlContent = generateEditionHTML(data, contentHash, logoUrl);
+    // Gerar HTML da edição com o hash já calculado, logo e expediente
+    const htmlContent = generateEditionHTML(data, contentHash, logoUrl, expedienteText);
     
     // Nome do arquivo
     const filename = `diario-oficial-${data.edition.edition_number.replace(/\//g, '-')}-${data.edition.year}.html`;
