@@ -3407,6 +3407,9 @@ function renderEditionsTable(editions) {
                                 <button onclick="editEdition(${edition.id})" class="text-green-600 hover:text-green-900" title="Editar">
                                     <i class="fas fa-edit"></i>
                                 </button>
+                                <button onclick="previewEditionPDF(${edition.id})" class="text-teal-600 hover:text-teal-900" title="Pré-visualizar PDF">
+                                    <i class="fas fa-eye"></i>
+                                </button>
                                 <button onclick="publishEdition(${edition.id})" class="text-purple-600 hover:text-purple-900" title="Publicar">
                                     <i class="fas fa-rocket"></i>
                                 </button>
@@ -4144,6 +4147,24 @@ async function verifyMatterSignature() {
 // ====================================
 // DOWNLOAD E EXPORTAÇÃO
 // ====================================
+
+async function previewEditionPDF(editionId) {
+    try {
+        console.log(`👁️ Abrindo pré-visualização da edição ${editionId}`);
+        
+        // Abrir PDF em nova aba
+        const url = `/api/editions/${editionId}/preview`;
+        const newWindow = window.open(url, '_blank');
+        
+        if (!newWindow) {
+            alert('⚠️ Por favor, permita pop-ups para visualizar o PDF.\n\nOu clique com botão direito no botão de pré-visualização e escolha "Abrir em nova aba".');
+        }
+        
+    } catch (error) {
+        console.error('❌ Erro na pré-visualização:', error);
+        alert('❌ Erro ao abrir pré-visualização:\n\n' + error.message);
+    }
+}
 
 async function downloadEditionPDF(editionId, editionNumber, year) {
     try {

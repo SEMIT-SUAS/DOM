@@ -22,6 +22,9 @@ interface EditionData {
     edition_number: string;
     edition_date: string;
     year: number;
+    is_supplemental?: number;
+    parent_edition_id?: number;
+    parent_edition_number?: string;
   };
   matters: Array<{
     id: number;
@@ -295,6 +298,24 @@ function generateEditionHTML(data: EditionData, validationHash: string, logoUrl:
       font-size: 11pt;
       color: #666;
       margin-top: 0.3rem;
+    }
+    
+    /* Aviso de Edição Suplementar */
+    .supplemental-notice {
+      margin: 1rem 0;
+      padding: 1rem;
+      background-color: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      border-radius: 4px;
+      font-size: 11pt;
+      color: #92400e;
+      text-align: center;
+      page-break-after: avoid;
+    }
+    
+    .supplemental-notice i {
+      margin-right: 0.5rem;
+      color: #f59e0b;
     }
     
     /* Expediente */
@@ -691,6 +712,13 @@ function generateEditionHTML(data: EditionData, validationHash: string, logoUrl:
       <div class="header-right">ANO XLV * N.º ${edition.edition_number} * ISSN 2764-8958</div>
     </div>
   </header>
+  
+  ${data.edition.is_supplemental && data.edition.parent_edition_number ? `
+  <div class="supplemental-notice">
+    <i class="fas fa-info-circle"></i>
+    <strong>EDIÇÃO SUPLEMENTAR</strong> da Edição Normal N.º ${data.edition.parent_edition_number} de ${formattedDate}
+  </div>
+  ` : ''}
   
   ${expediente ? `
   <section class="expediente-section">

@@ -16,10 +16,14 @@ editions.get('/:id/pdf', async (c) => {
   try {
     const id = parseInt(c.req.param('id'));
     
-    // Buscar edição publicada
-    const edition = await c.env.DB.prepare(
-      'SELECT * FROM editions WHERE id = ? AND status = ?'
-    ).bind(id, 'published').first();
+    // Buscar edição publicada com informação da edição pai (se suplementar)
+    const edition = await c.env.DB.prepare(`
+      SELECT e.*, 
+             parent.edition_number as parent_edition_number
+      FROM editions e
+      LEFT JOIN editions parent ON e.parent_edition_id = parent.id
+      WHERE e.id = ? AND e.status = ?
+    `).bind(id, 'published').first();
     
     if (!edition) {
       return c.json({ error: 'Edição não encontrada ou não publicada' }, 404);
@@ -85,6 +89,84 @@ editions.get('/:id/pdf', async (c) => {
 
 // Aplicar autenticação em todas as outras rotas
 editions.use('/*', authMiddleware);
+
+/**
+ * GET /api/editions/:id/preview
+ * Pré-visualização de PDF (permite draft) - requer autenticação
+ */
+editions.get('/:id/preview', async (c) => {
+  try {
+    const user = c.get('user');
+    const id = parseInt(c.req.param('id'));
+    
+    // Buscar edição (permite draft para preview)
+    const edition = await c.env.DB.prepare(`
+      SELECT e.*, 
+             parent.edition_number as parent_edition_number
+      FROM editions e
+      LEFT JOIN editions parent ON e.parent_edition_id = parent.id
+      WHERE e.id = ?
+    `).bind(id).first();
+    
+    if (!edition) {
+      return c.json({ error: 'Edição não encontrada' }, 404);
+    }
+    
+    // Buscar matérias da edição
+    const { results: matters } = await c.env.DB.prepare(`
+      SELECT 
+        m.*,
+        s.name as secretaria_name,
+        s.acronym as secretaria_acronym,
+        u.name as author_name,
+        em.display_order,
+        mt.name as matter_type_name
+      FROM edition_matters em
+      INNER JOIN matters m ON em.matter_id = m.id
+      LEFT JOIN secretarias s ON m.secretaria_id = s.id
+      LEFT JOIN users u ON m.author_id = u.id
+      LEFT JOIN matter_types mt ON m.matter_type_id = mt.id
+      WHERE em.edition_id = ?
+      ORDER BY em.display_order ASC
+    `).bind(id).all();
+    
+    // Buscar anexos
+    const mattersWithAttachments = await Promise.all(
+      (matters as any[]).map(async (matter) => {
+        const { results: attachments } = await c.env.DB.prepare(`
+          SELECT id, filename, file_url, file_size, file_type, original_name
+          FROM attachments
+          WHERE matter_id = ?
+        `).bind(matter.id).all();
+        
+        return {
+          ...matter,
+          attachments: attachments || []
+        };
+      })
+    );
+    
+    // Gerar HTML (sem salvar no R2)
+    const { generateEditionPDF } = await import('../utils/pdf-generator');
+    const pdfResult = await generateEditionPDF(c.env.R2, {
+      edition: edition as any,
+      matters: mattersWithAttachments as any[]
+    }, c.env.DB);
+    
+    // Retornar HTML para visualização (inline, não attachment)
+    return new Response(pdfResult.htmlContent, {
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'X-Edition-Status': edition.status as string,
+        'X-Preview-Mode': 'true'
+      }
+    });
+    
+  } catch (error: any) {
+    console.error('Error generating preview:', error);
+    return c.json({ error: 'Erro ao gerar pré-visualização', details: error.message }, 500);
+  }
+});
 
 /**
  * GET /api/editions
@@ -301,19 +383,36 @@ editions.post('/', requireRole('admin', 'semad'), async (c) => {
       return c.json({ error: 'Já existe uma edição com este número' }, 400);
     }
     
+    // Se for suplementar, buscar edição normal do mesmo dia para referenciar
+    let parent_edition_id = null;
+    if (is_supplemental) {
+      const parentEdition = await c.env.DB.prepare(`
+        SELECT id, edition_number FROM editions 
+        WHERE edition_date = ? 
+        AND (is_supplemental = 0 OR is_supplemental IS NULL)
+        AND status = 'published'
+        LIMIT 1
+      `).bind(edition_date).first();
+      
+      if (parentEdition) {
+        parent_edition_id = parentEdition.id;
+      }
+    }
+    
     // Criar edição
     const result = await c.env.DB.prepare(`
       INSERT INTO editions (
         edition_number, edition_date, year, status,
-        is_supplemental, supplemental_number,
+        is_supplemental, supplemental_number, parent_edition_id,
         created_at, updated_at
-      ) VALUES (?, ?, ?, 'draft', ?, ?, datetime('now'), datetime('now'))
+      ) VALUES (?, ?, ?, 'draft', ?, ?, ?, datetime('now'), datetime('now'))
     `).bind(
       edition_number, 
       edition_date, 
       parseInt(year), 
       is_supplemental ? 1 : 0,
-      supplemental_number
+      supplemental_number,
+      parent_edition_id
     ).run();
     
     const editionId = result.meta.last_row_id;
