@@ -33,7 +33,21 @@ holidays.get('/', async (c) => {
     const stmt = c.env.DB.prepare(query);
     const { results } = await (params.length > 0 ? stmt.bind(...params) : stmt).all();
     
-    return c.json({ holidays: results });
+    // Mapear tipos do banco (português) para frontend (inglês)
+    const reverseTypeMap: Record<string, string> = {
+      'nacional': 'national',
+      'estadual': 'state',
+      'municipal': 'municipal',
+      'ponto_facultativo': 'optional'
+    };
+    
+    const mappedResults = (results as any[]).map(h => ({
+      ...h,
+      type: reverseTypeMap[h.type] || h.type,
+      is_recurring: h.recurring // Adicionar alias para frontend
+    }));
+    
+    return c.json({ holidays: mappedResults });
     
   } catch (error: any) {
     console.error('Error fetching holidays:', error);
@@ -51,13 +65,27 @@ holidays.get('/:id', async (c) => {
     
     const holiday = await c.env.DB.prepare(
       'SELECT * FROM holidays WHERE id = ?'
-    ).bind(id).first();
+    ).bind(id).first<any>();
     
     if (!holiday) {
       return c.json({ error: 'Feriado não encontrado' }, 404);
     }
     
-    return c.json({ holiday });
+    // Mapear tipos do banco (português) para frontend (inglês)
+    const reverseTypeMap: Record<string, string> = {
+      'nacional': 'national',
+      'estadual': 'state',
+      'municipal': 'municipal',
+      'ponto_facultativo': 'optional'
+    };
+    
+    const mappedHoliday = {
+      ...holiday,
+      type: reverseTypeMap[holiday.type] || holiday.type,
+      is_recurring: holiday.recurring
+    };
+    
+    return c.json({ holiday: mappedHoliday });
     
   } catch (error: any) {
     console.error('Error fetching holiday:', error);
@@ -78,11 +106,20 @@ holidays.post('/', requireRole('admin'), async (c) => {
       return c.json({ error: 'Data, nome e tipo são obrigatórios' }, 400);
     }
     
-    // Validar tipo
+    // Mapear tipo do frontend (inglês) para banco (português)
+    const typeMap: Record<string, string> = {
+      'national': 'nacional',
+      'state': 'estadual',
+      'municipal': 'municipal',
+      'optional': 'ponto_facultativo'
+    };
+    
     const validTypes = ['national', 'state', 'municipal', 'optional'];
     if (!validTypes.includes(type)) {
       return c.json({ error: 'Tipo inválido. Use: national, state, municipal ou optional' }, 400);
     }
+    
+    const dbType = typeMap[type] || type;
     
     // Verificar se já existe feriado nesta data
     const existing = await c.env.DB.prepare(
@@ -103,7 +140,7 @@ holidays.post('/', requireRole('admin'), async (c) => {
     `).bind(
       date,
       name,
-      type,
+      dbType,  // Usar valor mapeado para português
       is_recurring ? 1 : 0,
       year,
       user.id
@@ -158,6 +195,14 @@ holidays.put('/:id', requireRole('admin'), async (c) => {
       return c.json({ error: 'Feriado não encontrado' }, 404);
     }
     
+    // Mapear tipo do frontend (inglês) para banco (português)
+    const typeMap: Record<string, string> = {
+      'national': 'nacional',
+      'state': 'estadual',
+      'municipal': 'municipal',
+      'optional': 'ponto_facultativo'
+    };
+    
     // Validar tipo se fornecido
     if (type) {
       const validTypes = ['national', 'state', 'municipal', 'optional'];
@@ -165,6 +210,8 @@ holidays.put('/:id', requireRole('admin'), async (c) => {
         return c.json({ error: 'Tipo inválido. Use: national, state, municipal ou optional' }, 400);
       }
     }
+    
+    const dbType = type ? (typeMap[type] || type) : existing.type;
     
     // Verificar conflito de data
     if (date && date !== existing.date) {
@@ -192,7 +239,7 @@ holidays.put('/:id', requireRole('admin'), async (c) => {
     `).bind(
       finalDate,
       name || existing.name,
-      type || existing.type,
+      dbType,  // Usar valor mapeado
       is_recurring !== undefined ? (is_recurring ? 1 : 0) : existing.recurring,
       year,
       id

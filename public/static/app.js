@@ -1966,10 +1966,12 @@ async function showNewUserModal() {
             return;
         }
         
+        const cpfValue = document.getElementById('userCpf')?.value;
+        
         const userData = {
             name: document.getElementById('userName').value.trim(),
             email: document.getElementById('userEmail').value.trim(),
-            cpf: document.getElementById('userCpf').value.trim() || null,
+            cpf: (cpfValue && cpfValue.trim()) || null,
             password: document.getElementById('userPassword').value,
             role: role,
             secretaria_id: secretariaId ? parseInt(secretariaId) : null
@@ -2632,7 +2634,18 @@ async function deleteSecretaria(id, acronym) {
 async function loadSystemSettings(container) {
     try {
         const { data: settingsData } = await api.get('/settings');
-        const settings = settingsData.settings || {};
+        let settings = settingsData.settings || [];
+        
+        // Se receber array, converter para formato esperado
+        if (Array.isArray(settings)) {
+            const grouped = {};
+            settings.forEach(s => {
+                const category = s.key.split('_')[0] || 'general'; // Usar prefixo da key como categoria
+                if (!grouped[category]) grouped[category] = {};
+                grouped[category][s.key] = s;
+            });
+            settings = grouped;
+        }
         
         container.innerHTML = `
             <h2 class="text-2xl font-bold text-gray-800 mb-6">

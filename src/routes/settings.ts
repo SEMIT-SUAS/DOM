@@ -11,8 +11,9 @@ const settings = new Hono<HonoContext>();
 
 // Aplicar autenticação em todas as rotas de settings (exceto logo público)
 settings.use('/*', async (c, next) => {
-  // Logo é público - não requer autenticação
-  if (c.req.path.endsWith('/logo')) {
+  // Logo público não requer autenticação
+  const path = c.req.path;
+  if (path.includes('/logo') && c.req.method === 'GET' && path.endsWith('/logo')) {
     return await next();
   }
   return await authMiddleware(c, next);
