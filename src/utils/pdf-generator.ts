@@ -62,6 +62,64 @@ function generateEditionHTML(data: EditionData, validationHash: string, logoUrl:
     day: 'numeric'
   });
   
+  // Gerar índice organizado por Secretaria e Tipo
+  const indexBySecretaria: Record<string, Record<string, any[]>> = {};
+  
+  matters.forEach((matter, index) => {
+    const secName = matter.secretaria_name || 'Sem Secretaria';
+    const matterType = (matter as any).matter_type_name || 'Outros';
+    
+    if (!indexBySecretaria[secName]) {
+      indexBySecretaria[secName] = {};
+    }
+    
+    if (!indexBySecretaria[secName][matterType]) {
+      indexBySecretaria[secName][matterType] = [];
+    }
+    
+    indexBySecretaria[secName][matterType].push({
+      ...matter,
+      order: index + 1
+    });
+  });
+  
+  // Ordenar secretarias alfabeticamente
+  const sortedSecretarias = Object.keys(indexBySecretaria).sort();
+  
+  // Gerar HTML do índice
+  const indexHTML = `
+    <div class="index-section">
+      <h2 class="index-title">Índice</h2>
+      ${sortedSecretarias.map(secName => {
+        const types = indexBySecretaria[secName];
+        const sortedTypes = Object.keys(types).sort();
+        
+        return `
+          <div class="index-secretaria">
+            <h3 class="index-secretaria-name">${secName}</h3>
+            ${sortedTypes.map(typeName => {
+              const mattersList = types[typeName];
+              
+              return `
+                <div class="index-type">
+                  <h4 class="index-type-name">${typeName}</h4>
+                  <ul class="index-matters-list">
+                    ${mattersList.map(m => `
+                      <li class="index-matter-item">
+                        <span class="index-matter-title">${m.title}</span>
+                        <span class="index-matter-page">pág. ${m.order}</span>
+                      </li>
+                    `).join('')}
+                  </ul>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+  
   // Gerar HTML de cada matéria
   const mattersHTML = matters.map((matter, index) => {
     const columns = matter.layout_columns === 2 ? 'columns-2' : 'columns-1';
@@ -171,6 +229,76 @@ function generateEditionHTML(data: EditionData, validationHash: string, logoUrl:
     
     .edition-info strong {
       color: #333;
+    }
+    
+    /* Índice */
+    .index-section {
+      margin: 2rem 0;
+      padding: 1.5rem;
+      border: 2px solid #1e40af;
+      border-radius: 8px;
+      background-color: #f8fafc;
+      page-break-after: always;
+    }
+    
+    .index-title {
+      font-size: 18pt;
+      font-weight: bold;
+      color: #1e40af;
+      text-align: center;
+      margin-bottom: 1.5rem;
+      text-transform: uppercase;
+    }
+    
+    .index-secretaria {
+      margin-bottom: 1.5rem;
+      page-break-inside: avoid;
+    }
+    
+    .index-secretaria-name {
+      font-size: 14pt;
+      font-weight: bold;
+      color: #059669;
+      margin-bottom: 0.5rem;
+      border-bottom: 2px solid #059669;
+      padding-bottom: 0.3rem;
+    }
+    
+    .index-type {
+      margin-left: 1rem;
+      margin-bottom: 1rem;
+    }
+    
+    .index-type-name {
+      font-size: 12pt;
+      font-weight: bold;
+      color: #1e40af;
+      margin-bottom: 0.3rem;
+    }
+    
+    .index-matters-list {
+      list-style: none;
+      margin-left: 1rem;
+    }
+    
+    .index-matter-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.2rem 0;
+      font-size: 10pt;
+      border-bottom: 1px dotted #ccc;
+    }
+    
+    .index-matter-title {
+      flex: 1;
+      color: #333;
+    }
+    
+    .index-matter-page {
+      margin-left: 1rem;
+      color: #666;
+      font-weight: bold;
+      white-space: nowrap;
     }
     
     /* Matérias */
@@ -367,6 +495,8 @@ function generateEditionHTML(data: EditionData, validationHash: string, logoUrl:
       <p><strong>Data de Publicação:</strong> ${formattedDate}</p>
     </div>
   </header>
+  
+  ${indexHTML}
   
   <main class="edition-content">
     ${mattersHTML}

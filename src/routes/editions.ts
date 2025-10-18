@@ -888,4 +888,107 @@ editions.delete('/:id', requireRole('admin'), async (c) => {
   }
 });
 
+/**
+ * POST /api/editions/:id/auto-build
+ * Montagem automática do diário
+ * - Busca todas as matérias aprovadas do dia
+ * - Organiza por secretaria (alfabética) e depois por tipo
+ * - Define display_order automático
+ * - Adiciona todas à edição
+ */
+editions.post('/:id/auto-build', requireRole('admin', 'semad'), async (c) => {
+  try {
+    const id = parseInt(c.req.param('id'));
+    const user = c.get('user');
+    
+    // Verificar se edição existe e está em draft
+    const edition = await c.env.DB.prepare(
+      'SELECT * FROM editions WHERE id = ? AND status = ?'
+    ).bind(id, 'draft').first();
+    
+    if (!edition) {
+      return c.json({ error: 'Edição não encontrada ou já publicada' }, 404);
+    }
+    
+    // Buscar todas as matérias aprovadas e ainda não publicadas
+    const { results: matters } = await c.env.DB.prepare(`
+      SELECT 
+        m.*,
+        s.name as secretaria_name,
+        s.acronym as secretaria_acronym,
+        mt.name as matter_type_name
+      FROM matters m
+      LEFT JOIN secretarias s ON m.secretaria_id = s.id
+      LEFT JOIN matter_types mt ON m.matter_type_id = mt.id
+      WHERE m.status = 'approved'
+        AND m.id NOT IN (
+          SELECT matter_id FROM edition_matters WHERE edition_id != ?
+        )
+      ORDER BY s.name ASC, mt.name ASC, m.title ASC
+    `).bind(id).all();
+    
+    if (!matters || matters.length === 0) {
+      return c.json({ 
+        message: 'Nenhuma matéria aprovada disponível',
+        matters_added: 0
+      });
+    }
+    
+    // Remover matérias existentes da edição (se houver)
+    await c.env.DB.prepare(
+      'DELETE FROM edition_matters WHERE edition_id = ?'
+    ).bind(id).run();
+    
+    // Adicionar todas as matérias com display_order sequencial
+    let displayOrder = 1;
+    for (const matter of matters) {
+      await c.env.DB.prepare(`
+        INSERT INTO edition_matters (edition_id, matter_id, display_order, added_at, added_by)
+        VALUES (?, ?, ?, datetime('now'), ?)
+      `).bind(id, matter.id, displayOrder, user.id).run();
+      
+      displayOrder++;
+    }
+    
+    // Atualizar updated_at da edição
+    await c.env.DB.prepare(
+      'UPDATE editions SET updated_at = datetime(\'now\') WHERE id = ?'
+    ).bind(id).run();
+    
+    // Log de auditoria
+    const ipAddress = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
+    const userAgent = c.req.header('user-agent') || 'unknown';
+    
+    await c.env.DB.prepare(`
+      INSERT INTO audit_logs (
+        user_id, entity_type, entity_id, action,
+        new_values, ip_address, user_agent, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `).bind(
+      user.id,
+      'edition',
+      id,
+      'auto_build',
+      JSON.stringify({ matters_count: matters.length }),
+      ipAddress,
+      userAgent
+    ).run();
+    
+    return c.json({
+      message: 'Diário montado automaticamente com sucesso',
+      matters_added: matters.length,
+      matters: matters.map((m: any) => ({
+        id: m.id,
+        title: m.title,
+        secretaria: m.secretaria_acronym,
+        type: m.matter_type_name
+      }))
+    });
+    
+  } catch (error: any) {
+    console.error('Error auto-building edition:', error);
+    return c.json({ error: 'Erro ao montar diário automaticamente', details: error.message }, 500);
+  }
+});
+
 export default editions;

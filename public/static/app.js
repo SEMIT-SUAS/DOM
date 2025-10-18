@@ -458,7 +458,7 @@ async function loadMyMatters(container) {
         
         <div class="bg-white rounded-lg shadow overflow-hidden">
             <div class="p-4 border-b border-gray-200 space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <input 
                         type="text" 
                         id="filterMattersText"
@@ -466,6 +466,14 @@ async function loadMyMatters(container) {
                         placeholder="Buscar por título..."
                         onkeyup="filterMattersList()"
                     >
+                    
+                    <select 
+                        id="filterMattersSecretaria"
+                        class="px-4 py-2 border border-gray-300 rounded-lg"
+                        onchange="filterMattersList()"
+                    >
+                        <option value="">Todas as secretarias</option>
+                    </select>
                     
                     <select 
                         id="filterMattersType"
@@ -521,6 +529,7 @@ async function loadMyMatters(container) {
                     return `
                     <div class="p-4 hover:bg-gray-50 matter-item" 
                          data-title="${matter.title.toLowerCase()}"
+                         data-secretaria="${matter.secretaria_id || ''}"
                          data-type="${matter.matter_type_id || ''}"
                          data-status="${matter.status}"
                          data-date="${matter.created_at ? matter.created_at.split('T')[0] : ''}">
@@ -592,11 +601,15 @@ async function loadMyMatters(container) {
             </div>
         </div>
     `;
+    
+    // Load secretarias for filter
+    loadSecretariasFilter();
 }
 
 // Filter matters list
 function filterMattersList() {
     const textFilter = document.getElementById('filterMattersText')?.value.toLowerCase() || '';
+    const secretariaFilter = document.getElementById('filterMattersSecretaria')?.value || '';
     const typeFilter = document.getElementById('filterMattersType')?.value || '';
     const statusFilter = document.getElementById('filterMattersStatus')?.value || '';
     const dateFilter = document.getElementById('filterMattersDate')?.value || '';
@@ -605,16 +618,18 @@ function filterMattersList() {
     
     items.forEach(item => {
         const title = item.dataset.title;
+        const secretaria = item.dataset.secretaria;
         const type = item.dataset.type;
         const status = item.dataset.status;
         const date = item.dataset.date;
         
         const matchesText = !textFilter || title.includes(textFilter);
+        const matchesSecretaria = !secretariaFilter || secretaria === secretariaFilter;
         const matchesType = !typeFilter || type === typeFilter;
         const matchesStatus = !statusFilter || status === statusFilter;
         const matchesDate = !dateFilter || date === dateFilter;
         
-        if (matchesText && matchesType && matchesStatus && matchesDate) {
+        if (matchesText && matchesSecretaria && matchesType && matchesStatus && matchesDate) {
             item.style.display = '';
         } else {
             item.style.display = 'none';
@@ -625,16 +640,36 @@ function filterMattersList() {
 // Clear all filters
 function clearMattersFilters() {
     const textInput = document.getElementById('filterMattersText');
+    const secretariaSelect = document.getElementById('filterMattersSecretaria');
     const typeSelect = document.getElementById('filterMattersType');
     const statusSelect = document.getElementById('filterMattersStatus');
     const dateInput = document.getElementById('filterMattersDate');
     
     if (textInput) textInput.value = '';
+    if (secretariaSelect) secretariaSelect.value = '';
     if (typeSelect) typeSelect.value = '';
     if (statusSelect) statusSelect.value = '';
     if (dateInput) dateInput.value = '';
     
     filterMattersList();
+}
+
+// Load secretarias for filter dropdown
+async function loadSecretariasFilter() {
+    try {
+        const { data } = await api.get('/secretarias');
+        const select = document.getElementById('filterMattersSecretaria');
+        if (select && data.secretarias) {
+            data.secretarias.forEach(sec => {
+                const option = document.createElement('option');
+                option.value = sec.id;
+                option.textContent = `${sec.acronym} - ${sec.name}`;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading secretarias for filter:', error);
+    }
 }
 
 // Filter SEMAD matters list
@@ -2809,6 +2844,9 @@ async function viewEdition(id) {
                         
                         ${data.status === 'draft' && (state.user.role === 'admin' || state.user.role === 'semad') ? `
                             <div class="space-x-2">
+                                <button onclick="autoBuildEdition(${data.id})" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg" title="Montar diário automaticamente com todas as matérias aprovadas">
+                                    <i class="fas fa-magic mr-2"></i>Montar Automaticamente
+                                </button>
                                 <button onclick="addMatterToEdition(${data.id})" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
                                     <i class="fas fa-plus mr-2"></i>Adicionar Matéria
                                 </button>
@@ -3037,6 +3075,20 @@ async function removeMatterFromEdition(editionId, matterId) {
         viewEdition(editionId);
     } catch (error) {
         alert(error.response?.data?.error || 'Erro ao remover matéria');
+    }
+}
+
+async function autoBuildEdition(id) {
+    if (!confirm('Montar Diário Automaticamente?\n\nEsta ação irá:\n• Buscar TODAS as matérias aprovadas\n• Organizar por SECRETARIA (alfabética)\n• Organizar por TIPO dentro de cada secretaria\n• Adicionar automaticamente à edição\n\nMatérias já adicionadas serão REMOVIDAS primeiro.\n\nDeseja continuar?')) {
+        return;
+    }
+    
+    try {
+        const { data } = await api.post(`/editions/${id}/auto-build`);
+        alert(`✅ Diário montado automaticamente!\n\n${data.matters_added} matérias adicionadas\n\nOrganização:\n${data.matters.map((m, i) => `${i+1}. [${m.secretaria}] ${m.type}: ${m.title.substring(0, 40)}...`).join('\n')}`);
+        loadView('editionDetail', id);
+    } catch (error) {
+        alert(error.response?.data?.error || 'Erro ao montar diário automaticamente');
     }
 }
 
