@@ -2020,31 +2020,23 @@ async function loadHolidaysManagement(container) {
 }
 
 async function loadHolidaysTable(year = null) {
-    // Simular dados pois não temos rota de feriados ainda
-    const holidays = [
-        { id: 1, date: '2025-01-01', name: 'Confraternização Universal', type: 'national', is_recurring: 1 },
-        { id: 2, date: '2025-02-04', name: 'Carnaval', type: 'optional', is_recurring: 0 },
-        { id: 3, date: '2025-04-18', name: 'Sexta-feira Santa', type: 'national', is_recurring: 0 },
-        { id: 4, date: '2025-04-21', name: 'Tiradentes', type: 'national', is_recurring: 1 },
-        { id: 5, date: '2025-05-01', name: 'Dia do Trabalho', type: 'national', is_recurring: 1 },
-        { id: 6, date: '2025-09-07', name: 'Independência do Brasil', type: 'national', is_recurring: 1 },
-        { id: 7, date: '2025-10-12', name: 'Nossa Senhora Aparecida', type: 'national', is_recurring: 1 },
-        { id: 8, date: '2025-11-02', name: 'Finados', type: 'national', is_recurring: 1 },
-        { id: 9, date: '2025-11-15', name: 'Proclamação da República', type: 'national', is_recurring: 1 },
-        { id: 10, date: '2025-12-25', name: 'Natal', type: 'national', is_recurring: 1 }
-    ];
+    try {
+        // Buscar feriados da API
+        const params = year ? `?year=${year}` : '';
+        const { data } = await api.get(`/holidays${params}`);
+        const holidays = data.holidays || [];
+        
+        const tbody = document.getElementById('holidaysTableBody');
+        if (!tbody) return;
+        
+        const filteredHolidays = holidays;
     
-    const tbody = document.getElementById('holidaysTableBody');
-    if (!tbody) return;
-    
-    const filteredHolidays = year ? holidays.filter(h => h.date.startsWith(year)) : holidays;
-    
-    if (filteredHolidays.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Nenhum feriado encontrado</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = filteredHolidays.map(holiday => `
+        if (filteredHolidays.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Nenhum feriado encontrado</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = filteredHolidays.map(holiday => `
         <tr class="hover:bg-gray-50">
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 ${new Date(holiday.date + 'T00:00:00').toLocaleDateString('pt-BR')}
@@ -2067,7 +2059,14 @@ async function loadHolidaysTable(year = null) {
                 </button>
             </td>
         </tr>
-    `).join('');
+        `).join('');
+    } catch (error) {
+        console.error('Error loading holidays:', error);
+        const tbody = document.getElementById('holidaysTableBody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-red-500">Erro ao carregar feriados</td></tr>';
+        }
+    }
 }
 
 function filterHolidaysByYear() {
@@ -2129,13 +2128,20 @@ function showNewHolidayModal() {
             name: document.getElementById('holidayName').value.trim(),
             date: document.getElementById('holidayDate').value,
             type: document.getElementById('holidayType').value,
-            is_recurring: document.getElementById('holidayRecurring').checked ? 1 : 0
+            is_recurring: document.getElementById('holidayRecurring').checked
         };
         
-        // TODO: Implementar rota de API quando backend estiver pronto
-        alert('Funcionalidade de criação será implementada quando a rota /api/holidays existir');
-        console.log('Holiday data:', holidayData);
-        closeHolidayModal();
+        try {
+            await api.post('/holidays', holidayData);
+            alert('Feriado criado com sucesso!');
+            closeHolidayModal();
+            
+            // Recarregar tabela
+            const year = document.getElementById('holidayYearFilter')?.value;
+            loadHolidaysTable(year || null);
+        } catch (error) {
+            alert(error.response?.data?.error || 'Erro ao criar feriado');
+        }
     });
 }
 
@@ -2143,13 +2149,101 @@ function closeHolidayModal() {
     document.getElementById('holidayModal')?.remove();
 }
 
-function editHoliday(id) {
-    alert(`Editar feriado ID: ${id} - Implementar quando rota /api/holidays/:id existir`);
+async function editHoliday(id) {
+    try {
+        // Buscar dados do feriado
+        const { data } = await api.get(`/holidays/${id}`);
+        const holiday = data.holiday;
+        
+        const modal = document.createElement('div');
+        modal.innerHTML = `
+            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" id="holidayModal">
+                <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Editar Feriado</h3>
+                    
+                    <form id="holidayEditForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+                            <input type="text" id="holidayName" value="${holiday.name}" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Data *</label>
+                            <input type="date" id="holidayDate" value="${holiday.date}" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo *</label>
+                            <select id="holidayType" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                                <option value="national" ${holiday.type === 'national' ? 'selected' : ''}>Nacional</option>
+                                <option value="state" ${holiday.type === 'state' ? 'selected' : ''}>Estadual</option>
+                                <option value="municipal" ${holiday.type === 'municipal' ? 'selected' : ''}>Municipal</option>
+                                <option value="optional" ${holiday.type === 'optional' ? 'selected' : ''}>Facultativo</option>
+                            </select>
+                        </div>
+                        
+                        <div class="flex items-center">
+                            <input type="checkbox" id="holidayRecurring" ${holiday.is_recurring ? 'checked' : ''} class="mr-2">
+                            <label class="text-sm text-gray-700">Feriado Recorrente (todo ano)</label>
+                        </div>
+                        
+                        <div class="flex justify-end space-x-2 mt-6">
+                            <button type="button" onclick="closeHolidayModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                                Salvar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        document.getElementById('holidayEditForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const updatedData = {
+                name: document.getElementById('holidayName').value.trim(),
+                date: document.getElementById('holidayDate').value,
+                type: document.getElementById('holidayType').value,
+                is_recurring: document.getElementById('holidayRecurring').checked
+            };
+            
+            try {
+                await api.put(`/holidays/${id}`, updatedData);
+                alert('Feriado atualizado com sucesso!');
+                closeHolidayModal();
+                
+                // Recarregar tabela
+                const year = document.getElementById('holidayYearFilter')?.value;
+                loadHolidaysTable(year || null);
+            } catch (error) {
+                alert(error.response?.data?.error || 'Erro ao atualizar feriado');
+            }
+        });
+        
+    } catch (error) {
+        alert('Erro ao carregar dados do feriado');
+    }
 }
 
-function deleteHoliday(id, name) {
-    if (confirm(`Tem certeza que deseja excluir o feriado "${name}"?`)) {
-        alert(`Deletar feriado ID: ${id} - Implementar quando rota DELETE /api/holidays/:id existir`);
+async function deleteHoliday(id, name) {
+    if (!confirm(`Tem certeza que deseja excluir o feriado "${name}"?`)) {
+        return;
+    }
+    
+    try {
+        await api.delete(`/holidays/${id}`);
+        alert('Feriado removido com sucesso!');
+        
+        // Recarregar tabela
+        const year = document.getElementById('holidayYearFilter')?.value;
+        loadHolidaysTable(year || null);
+    } catch (error) {
+        alert(error.response?.data?.error || 'Erro ao deletar feriado');
     }
 }
 

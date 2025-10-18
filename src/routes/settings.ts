@@ -5,9 +5,18 @@
 
 import { Hono } from 'hono';
 import { HonoContext } from '../types';
-import { requireRole } from '../middleware/auth';
+import { authMiddleware, requireRole } from '../middleware/auth';
 
 const settings = new Hono<HonoContext>();
+
+// Aplicar autenticação em todas as rotas de settings (exceto logo público)
+settings.use('/*', async (c, next) => {
+  // Logo é público - não requer autenticação
+  if (c.req.path.endsWith('/logo')) {
+    return await next();
+  }
+  return await authMiddleware(c, next);
+});
 
 /**
  * GET /api/settings

@@ -5,9 +5,12 @@
 
 import { Hono } from 'hono';
 import { HonoContext } from '../types';
-import { requireRole } from '../middleware/auth';
+import { authMiddleware, requireRole } from '../middleware/auth';
 
 const secretarias = new Hono<HonoContext>();
+
+// Aplicar autenticação em todas as rotas de secretarias
+secretarias.use('/*', authMiddleware);
 
 /**
  * GET /api/secretarias

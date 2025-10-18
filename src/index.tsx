@@ -19,6 +19,7 @@ import verification from './routes/verification';
 import exportRoutes from './routes/export';
 import secretarias from './routes/secretarias';
 import settings from './routes/settings';
+import holidays from './routes/holidays';
 
 const app = new Hono<HonoContext>();
 
@@ -39,6 +40,7 @@ app.route('/api/verification', verification);
 app.route('/api/export', exportRoutes);
 app.route('/api/secretarias', secretarias);
 app.route('/api/settings', settings);
+app.route('/api/holidays', holidays);
 
 // Health check
 app.get('/api/health', (c) => {
