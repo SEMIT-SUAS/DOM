@@ -562,4 +562,112 @@ matters.delete('/:id', requireRole('secretaria'), async (c) => {
   }
 });
 
+/**
+ * POST /api/matters/:id/attachments
+ * Upload de anexos para uma matéria
+ */
+matters.post('/:id/attachments', async (c) => {
+  try {
+    const user = c.get('user');
+    const id = c.req.param('id');
+    
+    // Verificar se matéria existe
+    const matter = await c.env.DB
+      .prepare('SELECT * FROM matters WHERE id = ?')
+      .bind(id)
+      .first<Matter>();
+    
+    if (!matter) {
+      return c.json({ error: 'Matéria não encontrada' }, 404);
+    }
+    
+    // Verificar permissão
+    if (user.role === 'secretaria' && matter.secretaria_id !== user.secretaria_id) {
+      return c.json({ error: 'Acesso negado' }, 403);
+    }
+    
+    const formData = await c.req.formData();
+    const attachments = formData.getAll('attachments') as File[];
+    
+    if (attachments.length === 0) {
+      return c.json({ error: 'Nenhum anexo fornecido' }, 400);
+    }
+    
+    const uploadedFiles = [];
+    
+    for (const file of attachments) {
+      // Validar tamanho (10MB máximo)
+      if (file.size > 10 * 1024 * 1024) {
+        return c.json({ error: `Arquivo ${file.name} excede 10MB` }, 400);
+      }
+      
+      // Upload para R2 (se configurado) ou salvar metadata no DB
+      const filename = `${Date.now()}-${file.name}`;
+      const arrayBuffer = await file.arrayBuffer();
+      
+      // TODO: Upload to R2 bucket
+      // await c.env.R2.put(filename, arrayBuffer);
+      
+      // Salvar metadados no banco
+      await c.env.DB.prepare(`
+        INSERT INTO attachments (
+          matter_id, filename, original_name, file_type, file_size,
+          uploaded_by, uploaded_at
+        ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+      `).bind(
+        id,
+        filename,
+        file.name,
+        file.type,
+        file.size,
+        user.id
+      ).run();
+      
+      uploadedFiles.push({
+        filename,
+        original_name: file.name,
+        size: file.size
+      });
+    }
+    
+    return c.json({
+      message: `${uploadedFiles.length} anexo(s) enviado(s) com sucesso`,
+      files: uploadedFiles
+    });
+    
+  } catch (error) {
+    console.error('Upload attachments error:', error);
+    return c.json({ error: 'Erro ao fazer upload de anexos' }, 500);
+  }
+});
+
+/**
+ * GET /api/matters/:id/attachments
+ * Lista anexos de uma matéria
+ */
+matters.get('/:id/attachments', async (c) => {
+  try {
+    const id = c.req.param('id');
+    
+    const { results } = await c.env.DB
+      .prepare(`
+        SELECT 
+          a.*,
+          u.name as uploaded_by_name
+        FROM attachments a
+        LEFT JOIN users u ON a.uploaded_by = u.id
+        WHERE a.matter_id = ?
+        ORDER BY a.uploaded_at DESC
+      `)
+      .bind(id)
+      .all();
+    
+    return c.json({ attachments: results });
+    
+  } catch (error) {
+    console.error('List attachments error:', error);
+    return c.json({ error: 'Erro ao listar anexos' }, 500);
+  }
+});
+
 export default matters;

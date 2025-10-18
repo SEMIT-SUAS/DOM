@@ -1147,6 +1147,28 @@ async function saveMatter(submitForReview) {
                 layout_columns
             });
             
+            // Upload attachments if any
+            const hasAttachments = document.getElementById('hasAttachments')?.checked;
+            const attachmentsInput = document.getElementById('matterAttachments');
+            
+            if (hasAttachments && attachmentsInput && attachmentsInput.files.length > 0) {
+                const formData = new FormData();
+                for (let i = 0; i < attachmentsInput.files.length; i++) {
+                    formData.append('attachments', attachmentsInput.files[i]);
+                }
+                
+                try {
+                    await api.post(`/matters/${data.matterId}/attachments`, formData, {
+                        headers: {
+                            'Content-Type': 'multipart/form-data'
+                        }
+                    });
+                } catch (uploadError) {
+                    console.error('Erro ao fazer upload de anexos:', uploadError);
+                    alert('Matéria salva, mas houve erro ao fazer upload dos anexos');
+                }
+            }
+            
             if (submitForReview) {
                 await api.post(`/matters/${data.matterId}/submit`);
                 alert('Matéria criada e enviada para análise com sucesso!');
@@ -1966,13 +1988,21 @@ async function showNewUserModal() {
             return;
         }
         
+        const nameValue = document.getElementById('userName')?.value;
+        const emailValue = document.getElementById('userEmail')?.value;
         const cpfValue = document.getElementById('userCpf')?.value;
+        const passwordValue = document.getElementById('userPassword')?.value;
+        
+        if (!nameValue || !emailValue || !passwordValue) {
+            alert('Nome, email e senha são obrigatórios');
+            return;
+        }
         
         const userData = {
-            name: document.getElementById('userName').value.trim(),
-            email: document.getElementById('userEmail').value.trim(),
+            name: nameValue.trim(),
+            email: emailValue.trim(),
             cpf: (cpfValue && cpfValue.trim()) || null,
-            password: document.getElementById('userPassword').value,
+            password: passwordValue,
             role: role,
             secretaria_id: secretariaId ? parseInt(secretariaId) : null
         };
@@ -3106,6 +3136,28 @@ async function showNewEditionModal() {
         loadView('editions');
     } catch (error) {
         alert(error.response?.data?.error || 'Erro ao criar edição');
+    }
+}
+
+async function editEdition(id) {
+    try {
+        const { data } = await api.get(`/editions/${id}`);
+        
+        const newNumber = prompt('Número da edição:', data.edition_number);
+        if (!newNumber) return;
+        
+        const newDate = prompt('Data da edição (YYYY-MM-DD):', data.edition_date);
+        if (!newDate) return;
+        
+        await api.put(`/editions/${id}`, {
+            edition_number: newNumber,
+            edition_date: newDate
+        });
+        
+        alert('Edição atualizada com sucesso!');
+        loadView('editions');
+    } catch (error) {
+        alert(error.response?.data?.error || 'Erro ao editar edição');
     }
 }
 
