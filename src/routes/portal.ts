@@ -82,6 +82,10 @@ portal.get('/search', async (c) => {
   try {
     const { DB } = c.env;
     const query = c.req.query('q') || '';
+    const status = c.req.query('status') || 'published'; // Filtro de status
+    const year = c.req.query('year') || '';
+    const secretaria = c.req.query('secretaria') || '';
+    const type = c.req.query('type') || '';
     const limit = parseInt(c.req.query('limit') || '20');
     
     if (!query || query.trim().length < 3) {
@@ -91,33 +95,76 @@ portal.get('/search', async (c) => {
       });
     }
     
-    // Pesquisar em matérias publicadas
-    const searchPattern = `%${query.trim()}%`;
-    const results = await DB.prepare(`
+    // Construir query dinâmica com filtros
+    let sqlQuery = `
       SELECT 
         m.id,
         m.title,
         m.content,
+        m.status,
         m.created_at,
         s.name as secretaria_name,
+        s.acronym as secretaria_acronym,
         mt.name as matter_type_name,
         e.edition_number,
-        e.year as edition_year
+        e.year as edition_year,
+        e.edition_date,
+        e.status as edition_status
       FROM matters m
       INNER JOIN secretarias s ON m.secretaria_id = s.id
       INNER JOIN matter_types mt ON m.matter_type_id = mt.id
       LEFT JOIN edition_matters em ON m.id = em.matter_id
       LEFT JOIN editions e ON em.edition_id = e.id
-      WHERE m.status = 'published'
-      AND (m.title LIKE ? OR m.content LIKE ?)
-      ORDER BY m.created_at DESC
-      LIMIT ?
-    `).bind(searchPattern, searchPattern, limit).all();
+      WHERE 1=1
+    `;
+    
+    const params: any[] = [];
+    
+    // Filtro de status (padrão: apenas publicadas)
+    if (status && status !== 'all') {
+      sqlQuery += ` AND m.status = ?`;
+      params.push(status);
+    }
+    
+    // Filtro de busca textual
+    const searchPattern = `%${query.trim()}%`;
+    sqlQuery += ` AND (m.title LIKE ? OR m.content LIKE ?)`;
+    params.push(searchPattern, searchPattern);
+    
+    // Filtro por ano
+    if (year) {
+      sqlQuery += ` AND e.year = ?`;
+      params.push(parseInt(year));
+    }
+    
+    // Filtro por secretaria
+    if (secretaria) {
+      sqlQuery += ` AND s.acronym = ?`;
+      params.push(secretaria);
+    }
+    
+    // Filtro por tipo
+    if (type) {
+      sqlQuery += ` AND mt.name = ?`;
+      params.push(type);
+    }
+    
+    sqlQuery += ` ORDER BY m.created_at DESC LIMIT ?`;
+    params.push(limit);
+    
+    // Executar query
+    const results = await DB.prepare(sqlQuery).bind(...params).all();
     
     return c.json({
       results: results.results || [],
       count: results.results?.length || 0,
-      query: query
+      query: query,
+      filters: {
+        status,
+        year,
+        secretaria,
+        type
+      }
     });
     
   } catch (error) {
@@ -180,6 +227,58 @@ portal.get('/analytics', async (c) => {
   } catch (error) {
     console.error('Error fetching analytics:', error);
     return c.json({ error: 'Erro ao buscar análises' }, 500);
+  }
+});
+
+// GET /api/portal/filters - Opções de filtros disponíveis
+portal.get('/filters', async (c) => {
+  try {
+    const { DB } = c.env;
+    
+    // Anos disponíveis
+    const years = await DB.prepare(`
+      SELECT DISTINCT year FROM editions 
+      WHERE status = 'published'
+      ORDER BY year DESC
+    `).all();
+    
+    // Secretarias com publicações
+    const secretarias = await DB.prepare(`
+      SELECT DISTINCT s.acronym, s.name 
+      FROM secretarias s
+      INNER JOIN matters m ON s.id = m.secretaria_id
+      WHERE m.status = 'published'
+      ORDER BY s.acronym
+    `).all();
+    
+    // Tipos de matéria publicados
+    const types = await DB.prepare(`
+      SELECT DISTINCT mt.name 
+      FROM matter_types mt
+      INNER JOIN matters m ON mt.id = m.matter_type_id
+      WHERE m.status = 'published'
+      ORDER BY mt.name
+    `).all();
+    
+    // Status disponíveis para administradores (no portal público, sempre "published")
+    const statuses = [
+      { value: 'published', label: 'Publicadas' },
+      { value: 'draft', label: 'Rascunhos' },
+      { value: 'submitted', label: 'Submetidas' },
+      { value: 'approved', label: 'Aprovadas' },
+      { value: 'rejected', label: 'Rejeitadas' }
+    ];
+    
+    return c.json({
+      years: years.results || [],
+      secretarias: secretarias.results || [],
+      types: types.results || [],
+      statuses: statuses
+    });
+    
+  } catch (error) {
+    console.error('Error fetching filters:', error);
+    return c.json({ error: 'Erro ao buscar filtros' }, 500);
   }
 });
 

@@ -4207,8 +4207,15 @@ async function previewEditionPDF(editionId) {
     }
 }
 
-async function downloadEditionPDF(editionId, editionNumber, year) {
+async function downloadEditionPDF(editionId, editionNumber = null, year = null) {
     try {
+        // Se não tiver editionNumber/year, buscar da API
+        if (!editionNumber || !year) {
+            const { data: editionData } = await api.get(`/editions/${editionId}`);
+            editionNumber = editionData.edition.edition_number;
+            year = editionData.edition.year;
+        }
+        
         console.log(`📥 Iniciando download da edição ${editionNumber}/${year}`);
         
         // Tentar baixar PDF/HTML do backend

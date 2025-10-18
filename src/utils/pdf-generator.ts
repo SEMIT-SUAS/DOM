@@ -49,6 +49,10 @@ interface EditionData {
       original_name?: string;
     }>;
   }>;
+  publisher?: {
+    name: string;
+    secretaria_acronym: string;
+  } | null;
 }
 
 interface PDFResult {
@@ -185,9 +189,7 @@ function generateEditionHTML(data: EditionData, validationHash: string, logoUrl:
               ${matter.signature_hash ? `<p class="signature-hash"><strong>Hash:</strong> ${matter.signature_hash.substring(0, 16)}...</p>` : ''}
             ` : ''}
           </div>
-          <div class="author-info">
-            <p><strong>Publicado por:</strong> ${matter.author_name} - ${matter.secretaria_acronym}</p>
-          </div>
+          <!-- Removed individual matter publisher info -->
         </div>
       </article>
       ${index < matters.length - 1 ? '<hr class="matter-divider">' : ''}
@@ -706,7 +708,7 @@ function generateEditionHTML(data: EditionData, validationHash: string, logoUrl:
       <div class="header-left">SÃO LUÍS/MA * ${formattedDate}</div>
       <div class="header-center">
         ${logoUrl ? `<img src="${logoUrl}" alt="Brasão" class="logo">` : `<div class="logo-placeholder">🏛️</div>`}
-        <h1>Diário <span class="highlight">🗃️</span> Oficial</h1>
+        <h1>Diário Oficial</h1>
         <p class="subtitle">Município de São Luís</p>
       </div>
       <div class="header-right">ANO XLV * N.º ${edition.edition_number} * ISSN 2764-8958</div>
@@ -732,6 +734,14 @@ function generateEditionHTML(data: EditionData, validationHash: string, logoUrl:
   <main class="edition-content">
     ${mattersHTML}
   </main>
+  
+  ${data.publisher ? `
+  <div class="publisher-info" style="margin-top: 2rem; padding: 1rem; background-color: #f8fafc; border-top: 2px solid #0066cc; text-align: center;">
+    <p style="margin: 0; font-size: 10pt; color: #333;">
+      <strong>Publicado por:</strong> ${data.publisher.name} - ${data.publisher.secretaria_acronym}
+    </p>
+  </div>
+  ` : ''}
   
   <footer class="edition-footer">
     <div class="footer-content">

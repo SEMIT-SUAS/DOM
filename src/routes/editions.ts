@@ -29,6 +29,14 @@ editions.get('/:id/pdf', async (c) => {
       return c.json({ error: 'Edição não encontrada ou não publicada' }, 404);
     }
     
+    // Buscar informações do publicador
+    const publisher = await c.env.DB.prepare(`
+      SELECT u.name, s.acronym as secretaria_acronym
+      FROM users u
+      LEFT JOIN secretarias s ON u.secretaria_id = s.id
+      WHERE u.id = ?
+    `).bind(edition.published_by).first();
+    
     // Buscar matérias da edição para gerar HTML
     const { results: matters } = await c.env.DB.prepare(`
       SELECT 
@@ -67,7 +75,8 @@ editions.get('/:id/pdf', async (c) => {
     const { generateEditionPDF } = await import('../utils/pdf-generator');
     const pdfResult = await generateEditionPDF(c.env.R2, {
       edition: edition as any,
-      matters: mattersWithAttachments as any[]
+      matters: mattersWithAttachments as any[],
+      publisher: publisher as any
     }, c.env.DB);
     
     // Retornar HTML diretamente para download
@@ -112,6 +121,17 @@ editions.get('/:id/preview', async (c) => {
       return c.json({ error: 'Edição não encontrada' }, 404);
     }
     
+    // Buscar informações do publicador (se existir)
+    let publisher = null;
+    if (edition.published_by) {
+      publisher = await c.env.DB.prepare(`
+        SELECT u.name, s.acronym as secretaria_acronym
+        FROM users u
+        LEFT JOIN secretarias s ON u.secretaria_id = s.id
+        WHERE u.id = ?
+      `).bind(edition.published_by).first();
+    }
+    
     // Buscar matérias da edição
     const { results: matters } = await c.env.DB.prepare(`
       SELECT 
@@ -150,11 +170,117 @@ editions.get('/:id/preview', async (c) => {
     const { generateEditionPDF } = await import('../utils/pdf-generator');
     const pdfResult = await generateEditionPDF(c.env.R2, {
       edition: edition as any,
-      matters: mattersWithAttachments as any[]
+      matters: mattersWithAttachments as any[],
+      publisher: publisher as any
     }, c.env.DB);
     
-    // Retornar HTML para visualização (inline, não attachment)
-    return new Response(pdfResult.htmlContent, {
+    // Adicionar cabeçalho de preview ao HTML
+    const previewHTML = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pré-visualização - Edição ${edition.edition_number}</title>
+  <style>
+    .preview-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 1rem;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      z-index: 1000;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .preview-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .preview-badge {
+      background: rgba(255,255,255,0.2);
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: bold;
+    }
+    .preview-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .preview-btn {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.3s;
+      text-decoration: none;
+      color: white;
+    }
+    .preview-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .btn-download {
+      background: #10b981;
+    }
+    .btn-close {
+      background: #ef4444;
+    }
+    .btn-print {
+      background: #3b82f6;
+    }
+    .preview-content {
+      margin-top: 70px;
+    }
+    @media print {
+      .preview-header {
+        display: none !important;
+      }
+      .preview-content {
+        margin-top: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-header">
+    <div class="preview-info">
+      <span>🔍 PRÉ-VISUALIZAÇÃO</span>
+      <span class="preview-badge">Edição ${edition.edition_number}</span>
+      <span class="preview-badge" style="background: ${edition.status === 'published' ? '#10b981' : '#f59e0b'}">
+        ${edition.status === 'published' ? '✓ Publicada' : '⚠ ' + (edition.status === 'draft' ? 'Rascunho' : 'Em revisão')}
+      </span>
+    </div>
+    <div class="preview-actions">
+      <button class="preview-btn btn-print" onclick="window.print()">
+        🖨️ Imprimir
+      </button>
+      ${edition.status === 'published' ? `
+      <a href="/api/editions/${edition.id}/pdf" class="preview-btn btn-download" download>
+        📥 Baixar PDF
+      </a>
+      ` : ''}
+      <button class="preview-btn btn-close" onclick="window.close()">
+        ✕ Fechar
+      </button>
+    </div>
+  </div>
+  <div class="preview-content">
+    ${pdfResult.htmlContent.replace('<!DOCTYPE html>', '').replace(/<html[^>]*>/, '').replace('</html>', '').replace(/<head>[\s\S]*?<\/head>/, '').replace(/<body[^>]*>/, '').replace('</body>', '')}
+  </div>
+</body>
+</html>
+    `.trim();
+    
+    // Retornar HTML aprimorado para visualização
+    return new Response(previewHTML, {
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
         'X-Edition-Status': edition.status as string,
@@ -337,9 +463,9 @@ editions.post('/', requireRole('admin', 'semad'), async (c) => {
           nextSupplementNumber = parseInt(lastSupplement.supplemental_number as string) + 1;
         }
         
-        // Formato: "001-A/2025" para suplementares
+        // Formato: "001-S/2025" para suplementares
         const paddedNumber = nextSupplementNumber.toString().padStart(3, '0');
-        edition_number = `${paddedNumber}-A/${year}`;
+        edition_number = `${paddedNumber}-S/${year}`;
         
       } else {
         // Para edição normal: buscar última edição normal do ano
@@ -893,26 +1019,53 @@ editions.post('/:id/publish', requireRole('admin', 'semad'), async (c) => {
       }, 400);
     }
     
-    // Buscar todas as matérias da edição ordenadas
+    // Buscar informações do publicador (usuário logado que está publicando)
+    const publisher = await c.env.DB.prepare(`
+      SELECT u.name, s.acronym as secretaria_acronym
+      FROM users u
+      LEFT JOIN secretarias s ON u.secretaria_id = s.id
+      WHERE u.id = ?
+    `).bind(user.id).first();
+    
+    // Buscar todas as matérias da edição ordenadas com anexos
     const { results: matters } = await c.env.DB.prepare(`
       SELECT 
         m.*,
         s.name as secretaria_name,
         s.acronym as secretaria_acronym,
         u.name as author_name,
-        em.display_order
+        em.display_order,
+        mt.name as matter_type_name
       FROM edition_matters em
       INNER JOIN matters m ON em.matter_id = m.id
       LEFT JOIN secretarias s ON m.secretaria_id = s.id
       LEFT JOIN users u ON m.author_id = u.id
+      LEFT JOIN matter_types mt ON m.matter_type_id = mt.id
       WHERE em.edition_id = ?
       ORDER BY em.display_order ASC
     `).bind(id).all();
     
+    // Buscar anexos de cada matéria
+    const mattersWithAttachments = await Promise.all(
+      (matters as any[]).map(async (matter) => {
+        const { results: attachments } = await c.env.DB.prepare(`
+          SELECT id, filename, file_url, file_size, file_type, original_name
+          FROM attachments
+          WHERE matter_id = ?
+        `).bind(matter.id).all();
+        
+        return {
+          ...matter,
+          attachments: attachments || []
+        };
+      })
+    );
+    
     // Gerar PDF da edição
     const pdfResult = await generateEditionPDF(c.env.R2, {
       edition: edition as any,
-      matters: matters as any[]
+      matters: mattersWithAttachments as any[],
+      publisher: publisher as any
     }, c.env.DB);
     
     // Atualizar edição com informações do PDF
