@@ -2230,6 +2230,8 @@ async function editUser(id) {
             const nameElement = document.getElementById('userName');
             const roleElement = document.getElementById('userRole');
             
+            alert('🔥 SUBMIT EXECUTANDO! Pegando nome: ' + nameElement?.value + ' | Role: ' + roleElement?.value);
+            
             console.log('🚀 EDITUSER SUBMIT - Código app-v2.js executando!');
             console.log('📝 Nome elemento:', nameElement, 'Valor:', nameElement?.value);
             console.log('📝 Role elemento:', roleElement, 'Valor:', roleElement?.value);
@@ -2252,6 +2254,7 @@ async function editUser(id) {
                 active: document.getElementById('userActive').checked ? 1 : 0
             };
             
+            alert('📤 ENVIANDO: ' + JSON.stringify(userData));
             console.log('📤 DADOS A ENVIAR:', JSON.stringify(userData, null, 2));
             
             try {
