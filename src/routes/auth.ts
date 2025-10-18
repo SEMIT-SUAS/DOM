@@ -6,6 +6,7 @@ import { Hono } from 'hono';
 import { HonoContext, User } from '../types';
 import { hashPassword, verifyPassword, generateToken } from '../utils/auth';
 import { getCurrentTimestamp } from '../utils/date';
+import { authMiddleware } from '../middleware/auth';
 
 const auth = new Hono<HonoContext>();
 
@@ -174,7 +175,7 @@ auth.post('/change-password', async (c) => {
  * GET /api/auth/me
  * Retorna dados do usuário autenticado
  */
-auth.get('/me', async (c) => {
+auth.get('/me', authMiddleware, async (c) => {
   try {
     const user = c.get('user');
     
