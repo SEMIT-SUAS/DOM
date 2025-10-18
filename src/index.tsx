@@ -17,6 +17,8 @@ import editions from './routes/editions';
 import users from './routes/users';
 import verification from './routes/verification';
 import exportRoutes from './routes/export';
+import secretarias from './routes/secretarias';
+import settings from './routes/settings';
 
 const app = new Hono<HonoContext>();
 
@@ -35,6 +37,8 @@ app.route('/api/editions', editions);
 app.route('/api/users', users);
 app.route('/api/verification', verification);
 app.route('/api/export', exportRoutes);
+app.route('/api/secretarias', secretarias);
+app.route('/api/settings', settings);
 
 // Health check
 app.get('/api/health', (c) => {
@@ -43,6 +47,368 @@ app.get('/api/health', (c) => {
     timestamp: new Date().toISOString(),
     service: 'DOM - Diário Oficial Municipal'
   });
+});
+
+// Public verification page (no login required) - PÁGINA PÚBLICA
+app.get('/verificar', (c) => {
+  return c.html(`
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificar Autenticidade - DOM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        
+        /* WebGL Canvas Background */
+        #webgl-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+        
+        .verify-container {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .verify-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .result-valid {
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 min-h-screen">
+    <!-- WebGL Canvas -->
+    <canvas id="webgl-background"></canvas>
+    
+    <!-- Navbar -->
+    <nav class="verify-container bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg border-b border-white border-opacity-20 py-4">
+        <div class="max-w-7xl mx-auto px-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-shield-alt text-white text-3xl"></i>
+                <div>
+                    <h1 class="text-white text-xl font-bold">Verificação de Autenticidade</h1>
+                    <p class="text-blue-200 text-sm">Diário Oficial Municipal - São Luís/MA</p>
+                </div>
+            </div>
+            <div class="flex space-x-4">
+                <a href="https://www.saoluis.ma.gov.br" target="_blank" class="text-white hover:text-blue-200 transition">
+                    <i class="fas fa-home mr-2"></i>Portal da Prefeitura
+                </a>
+                <a href="/" class="text-white hover:text-blue-200 transition">
+                    <i class="fas fa-sign-in-alt mr-2"></i>Área Restrita
+                </a>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Main Content -->
+    <div class="verify-container max-w-5xl mx-auto px-4 py-12">
+        <!-- Hero Section -->
+        <div class="text-center mb-12">
+            <div class="inline-block bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg rounded-full p-6 mb-6">
+                <i class="fas fa-certificate text-white text-6xl"></i>
+            </div>
+            <h2 class="text-4xl font-bold text-white mb-4">Verifique a Autenticidade</h2>
+            <p class="text-blue-200 text-lg max-w-2xl mx-auto">
+                Valide documentos oficiais usando os hashes de segurança. 
+                Garantimos a integridade e autenticidade de todas as publicações.
+            </p>
+        </div>
+        
+        <!-- Verification Cards -->
+        <div class="grid md:grid-cols-2 gap-8 mb-12">
+            <!-- Verificar Edição -->
+            <div class="verify-card rounded-2xl p-8">
+                <div class="flex items-center mb-6">
+                    <div class="bg-gradient-to-br from-blue-500 to-purple-600 rounded-full p-4 mr-4">
+                        <i class="fas fa-book text-white text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold text-gray-800">Verificar Edição</h3>
+                        <p class="text-gray-600 text-sm">Valide uma edição completa do diário</p>
+                    </div>
+                </div>
+                
+                <div class="space-y-4">
+                    <input 
+                        type="text" 
+                        id="editionNumber" 
+                        placeholder="Nº da Edição (ex: 001/2025)" 
+                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition"
+                    >
+                    <input 
+                        type="number" 
+                        id="editionYear" 
+                        placeholder="Ano (ex: 2025)" 
+                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition"
+                    >
+                    <input 
+                        type="text" 
+                        id="editionHash" 
+                        placeholder="Hash de Validação" 
+                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition"
+                    >
+                    <button 
+                        onclick="verifyEdition()" 
+                        class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 rounded-lg transition transform hover:scale-105"
+                    >
+                        <i class="fas fa-check-circle mr-2"></i>Verificar Edição
+                    </button>
+                </div>
+                
+                <div id="editionResult" class="mt-6"></div>
+            </div>
+            
+            <!-- Verificar Assinatura -->
+            <div class="verify-card rounded-2xl p-8">
+                <div class="flex items-center mb-6">
+                    <div class="bg-gradient-to-br from-green-500 to-teal-600 rounded-full p-4 mr-4">
+                        <i class="fas fa-signature text-white text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold text-gray-800">Verificar Assinatura</h3>
+                        <p class="text-gray-600 text-sm">Valide uma assinatura eletrônica</p>
+                    </div>
+                </div>
+                
+                <div class="space-y-4">
+                    <input 
+                        type="number" 
+                        id="matterId" 
+                        placeholder="ID da Matéria" 
+                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none transition"
+                    >
+                    <input 
+                        type="text" 
+                        id="signatureHash" 
+                        placeholder="Hash da Assinatura" 
+                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none transition"
+                    >
+                    <button 
+                        onclick="verifySignature()" 
+                        class="w-full bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white font-bold py-3 rounded-lg transition transform hover:scale-105"
+                    >
+                        <i class="fas fa-check-circle mr-2"></i>Verificar Assinatura
+                    </button>
+                </div>
+                
+                <div id="signatureResult" class="mt-6"></div>
+            </div>
+        </div>
+        
+        <!-- Info Box -->
+        <div class="verify-card rounded-2xl p-8">
+            <h4 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-info-circle text-blue-600 mr-3"></i>
+                Como obter os códigos de verificação?
+            </h4>
+            <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                    <h5 class="font-bold text-gray-700 mb-2">Hash da Edição</h5>
+                    <ul class="text-gray-600 text-sm space-y-1">
+                        <li><i class="fas fa-arrow-right text-blue-500 mr-2"></i>Encontrado no rodapé do PDF publicado</li>
+                        <li><i class="fas fa-arrow-right text-blue-500 mr-2"></i>Código alfanumérico de 64 caracteres</li>
+                        <li><i class="fas fa-arrow-right text-blue-500 mr-2"></i>Valida toda a edição do diário</li>
+                    </ul>
+                </div>
+                <div>
+                    <h5 class="font-bold text-gray-700 mb-2">Hash da Assinatura</h5>
+                    <ul class="text-gray-600 text-sm space-y-1">
+                        <li><i class="fas fa-arrow-right text-green-500 mr-2"></i>Presente no cabeçalho de cada matéria</li>
+                        <li><i class="fas fa-arrow-right text-green-500 mr-2"></i>Validação eletrônica individual</li>
+                        <li><i class="fas fa-arrow-right text-green-500 mr-2"></i>Garante integridade do documento</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <footer class="verify-container text-center py-8 text-white text-sm mt-12">
+        <p class="mb-2">© 2025 Prefeitura Municipal de São Luís - MA</p>
+        <p class="text-blue-200">Sistema Oficial de Publicações | Todos os direitos reservados</p>
+    </footer>
+    
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <script src="/static/webgl-init.js"></script>
+    <script>
+        async function verifyEdition() {
+            const editionNumber = document.getElementById('editionNumber').value.trim();
+            const year = document.getElementById('editionYear').value;
+            const hash = document.getElementById('editionHash').value.trim();
+            const resultDiv = document.getElementById('editionResult');
+            
+            if (!editionNumber || !year || !hash) {
+                resultDiv.innerHTML = \`
+                    <div class="bg-red-100 border-2 border-red-300 text-red-800 px-4 py-3 rounded-lg">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>Preencha todos os campos
+                    </div>
+                \`;
+                return;
+            }
+            
+            resultDiv.innerHTML = \`
+                <div class="bg-gray-100 border-2 border-gray-300 text-gray-800 px-4 py-3 rounded-lg">
+                    <i class="fas fa-spinner fa-spin mr-2"></i>Verificando...
+                </div>
+            \`;
+            
+            try {
+                const { data } = await axios.post('/api/verification/edition', {
+                    edition_number: editionNumber,
+                    year: parseInt(year),
+                    hash: hash
+                });
+                
+                if (data.valid) {
+                    resultDiv.innerHTML = \`
+                        <div class="result-valid bg-green-100 border-2 border-green-300 text-green-800 px-4 py-4 rounded-lg">
+                            <div class="flex items-start mb-3">
+                                <i class="fas fa-check-circle text-3xl mr-3 mt-1"></i>
+                                <div>
+                                    <p class="font-bold text-lg">\${data.message}</p>
+                                    <p class="text-sm mt-1">Edição \${data.edition.edition_number} - \${data.edition.year}</p>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3 text-sm mt-3 pt-3 border-t border-green-200">
+                                <div>
+                                    <p class="font-semibold">Publicado em:</p>
+                                    <p>\${new Date(data.edition.published_at).toLocaleDateString('pt-BR')}</p>
+                                </div>
+                                <div>
+                                    <p class="font-semibold">Total de Matérias:</p>
+                                    <p>\${data.edition.matter_count}</p>
+                                </div>
+                            </div>
+                        </div>
+                    \`;
+                } else {
+                    resultDiv.innerHTML = \`
+                        <div class="bg-red-100 border-2 border-red-300 text-red-800 px-4 py-4 rounded-lg">
+                            <div class="flex items-start">
+                                <i class="fas fa-times-circle text-3xl mr-3 mt-1"></i>
+                                <div>
+                                    <p class="font-bold text-lg">\${data.message}</p>
+                                    <p class="text-sm mt-1">O documento pode ter sido adulterado</p>
+                                </div>
+                            </div>
+                        </div>
+                    \`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = \`
+                    <div class="bg-red-100 border-2 border-red-300 text-red-800 px-4 py-3 rounded-lg">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        \${error.response?.data?.error || 'Erro ao verificar edição'}
+                    </div>
+                \`;
+            }
+        }
+        
+        async function verifySignature() {
+            const matterId = document.getElementById('matterId').value;
+            const signatureHash = document.getElementById('signatureHash').value.trim();
+            const resultDiv = document.getElementById('signatureResult');
+            
+            if (!matterId || !signatureHash) {
+                resultDiv.innerHTML = \`
+                    <div class="bg-red-100 border-2 border-red-300 text-red-800 px-4 py-3 rounded-lg">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>Preencha todos os campos
+                    </div>
+                \`;
+                return;
+            }
+            
+            resultDiv.innerHTML = \`
+                <div class="bg-gray-100 border-2 border-gray-300 text-gray-800 px-4 py-3 rounded-lg">
+                    <i class="fas fa-spinner fa-spin mr-2"></i>Verificando...
+                </div>
+            \`;
+            
+            try {
+                const { data } = await axios.post('/api/verification/matter-signature', {
+                    matter_id: parseInt(matterId),
+                    signature_hash: signatureHash
+                });
+                
+                if (data.valid) {
+                    resultDiv.innerHTML = \`
+                        <div class="result-valid bg-green-100 border-2 border-green-300 text-green-800 px-4 py-4 rounded-lg">
+                            <div class="flex items-start mb-3">
+                                <i class="fas fa-check-circle text-3xl mr-3 mt-1"></i>
+                                <div>
+                                    <p class="font-bold text-lg">\${data.message}</p>
+                                    <p class="text-sm mt-1">\${data.matter.title}</p>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3 text-sm mt-3 pt-3 border-t border-green-200">
+                                <div>
+                                    <p class="font-semibold">Secretaria:</p>
+                                    <p>\${data.matter.secretaria}</p>
+                                </div>
+                                <div>
+                                    <p class="font-semibold">Assinado por:</p>
+                                    <p>\${data.matter.signed_by}</p>
+                                </div>
+                            </div>
+                        </div>
+                    \`;
+                } else {
+                    resultDiv.innerHTML = \`
+                        <div class="bg-red-100 border-2 border-red-300 text-red-800 px-4 py-4 rounded-lg">
+                            <div class="flex items-start">
+                                <i class="fas fa-times-circle text-3xl mr-3 mt-1"></i>
+                                <div>
+                                    <p class="font-bold text-lg">\${data.message}</p>
+                                    <p class="text-sm mt-1">A assinatura pode ser inválida</p>
+                                </div>
+                            </div>
+                        </div>
+                    \`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = \`
+                    <div class="bg-red-100 border-2 border-red-300 text-red-800 px-4 py-3 rounded-lg">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        \${error.response?.data?.error || 'Erro ao verificar assinatura'}
+                    </div>
+                \`;
+            }
+        }
+    </script>
+</body>
+</html>
+  `);
 });
 
 // Main page - Sistema completo com interface
@@ -200,13 +566,23 @@ app.get('/', (c) => {
             </div>
             
             <!-- Footer with Prefeitura Link -->
-            <div class="login-container mt-8 text-center">
-                <a href="https://www.saoluis.ma.gov.br" target="_blank" rel="noopener noreferrer" class="footer-link inline-flex items-center space-x-2 text-white font-medium">
-                    <i class="fas fa-landmark"></i>
-                    <span>Portal da Prefeitura de São Luís</span>
-                    <i class="fas fa-external-link-alt text-sm"></i>
+            <div class="login-container mt-8 text-center space-y-4">
+                <!-- Link Verificar Autenticidade (PÚBLICO) -->
+                <a href="/verificar" class="footer-link inline-flex items-center space-x-2 text-white font-bold text-lg bg-purple-600 bg-opacity-20 px-6 py-3 rounded-lg hover:bg-opacity-30 transition">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Verificar Autenticidade do Diário</span>
+                    <i class="fas fa-arrow-right text-sm"></i>
                 </a>
-                <p class="text-white text-sm mt-4 opacity-80">
+                
+                <div class="flex justify-center space-x-6">
+                    <a href="https://www.saoluis.ma.gov.br" target="_blank" rel="noopener noreferrer" class="footer-link inline-flex items-center space-x-2 text-white font-medium hover:text-blue-200 transition">
+                        <i class="fas fa-landmark"></i>
+                        <span>Portal da Prefeitura</span>
+                        <i class="fas fa-external-link-alt text-sm"></i>
+                    </a>
+                </div>
+                
+                <p class="text-white text-sm opacity-80">
                     © 2025 Prefeitura Municipal de São Luís - MA
                 </p>
             </div>
