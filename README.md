@@ -222,6 +222,22 @@ rm -rf node_modules package-lock.json
 npm install
 ```
 
+### Download de PDF não funciona:
+
+**Sintoma:** Após publicar edição, fica na tela "View em desenvolvimento..."
+
+**Solução:**
+1. Limpe o cache do navegador (Ctrl+Shift+Del)
+2. Recarregue com cache limpo (Ctrl+F5)
+3. Verifique o console (F12) para mensagens de erro
+4. Como alternativa, baixe manualmente clicando no botão de download na lista de edições
+
+**Funcionalidade atual:**
+- ✅ Download automático após publicar
+- ✅ Logs detalhados no console
+- ✅ Mensagens claras de erro
+- ✅ Opção de download manual como fallback
+
 ## 📊 STATUS DO PROJETO
 
 - ✅ Backend API completo
@@ -235,6 +251,9 @@ npm install
 - ✅ Export CSV/XLS
 - ✅ Responsive design
 - ✅ Documentação completa
+- ✅ **Download automático de PDF** após publicar edição
+- ✅ **Feedback detalhado** durante download (console logs, mensagens)
+- ✅ **Tratamento de erros** robusto no download de PDF
 
 ## 📄 LICENÇA
 
