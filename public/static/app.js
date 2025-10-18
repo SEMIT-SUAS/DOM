@@ -2709,17 +2709,35 @@ async function loadSystemSettings(container) {
 }
 
 function generateSettingsCards(settings) {
-    const categories = ['schedules', 'editions', 'branding', 'notifications'];
+    // Agrupar configurações por prefixo da key
     const categoryNames = {
-        schedules: { name: 'Horários e Prazos', icon: 'clock', color: 'blue' },
-        editions: { name: 'Edições', icon: 'book', color: 'purple' },
-        branding: { name: 'Identidade Visual', icon: 'palette', color: 'pink' },
-        notifications: { name: 'Notificações', icon: 'bell', color: 'yellow' }
+        prefeitura: { name: 'Dados da Prefeitura', icon: 'building', color: 'blue' },
+        dom: { name: 'Diário Oficial', icon: 'newspaper', color: 'purple' },
+        edicao: { name: 'Edições e Numeração', icon: 'hashtag', color: 'indigo' },
+        pdf: { name: 'Configurações de PDF', icon: 'file-pdf', color: 'red' },
+        assinatura: { name: 'Assinatura Digital', icon: 'signature', color: 'green' },
+        notif: { name: 'Notificações', icon: 'bell', color: 'yellow' },
+        prazo: { name: 'Prazos', icon: 'clock', color: 'orange' },
+        acesso: { name: 'Acesso Público', icon: 'globe', color: 'teal' },
+        auditoria: { name: 'Auditoria', icon: 'shield-alt', color: 'gray' },
+        backup: { name: 'Backup', icon: 'database', color: 'cyan' },
+        interface: { name: 'Interface', icon: 'palette', color: 'pink' }
     };
     
-    return categories.map(category => {
-        const catSettings = settings[category] || {};
-        const catInfo = categoryNames[category] || { name: category, icon: 'cog', color: 'gray' };
+    // Agrupar por categoria
+    const grouped = {};
+    Object.keys(settings).forEach(cat => {
+        const catSettings = settings[cat];
+        Object.keys(catSettings).forEach(key => {
+            const prefix = key.split('_')[0];
+            if (!grouped[prefix]) grouped[prefix] = {};
+            grouped[prefix][key] = catSettings[key];
+        });
+    });
+    
+    return Object.keys(categoryNames).map(category => {
+        const catSettings = grouped[category] || {};
+        const catInfo = categoryNames[category];
         const keys = Object.keys(catSettings);
         
         if (keys.length === 0) return '';
@@ -2739,35 +2757,46 @@ function generateSettingsCards(settings) {
 
 function generateSettingField(category, key, setting) {
     const id = `setting_${category}_${key}`;
-    const value = setting.value;
-    const description = setting.description || '';
+    let value = setting.value;
+    const description = setting.description || key;
     
     if (key === 'logo_url') return ''; // Logo é tratado separadamente
     
-    if (setting.value_type === 'boolean') {
+    // Parse JSON values
+    try {
+        value = JSON.parse(value);
+    } catch (e) {
+        // Keep as string if not JSON
+    }
+    
+    // Detectar tipo automaticamente se não especificado
+    const valueType = setting.value_type || (typeof value === 'boolean' ? 'boolean' : typeof value === 'number' ? 'number' : 'string');
+    
+    if (valueType === 'boolean' || value === true || value === false || value === 'true' || value === 'false') {
+        const isChecked = value === true || value === 'true';
         return `
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between py-2">
                 <div class="flex-1">
                     <label class="text-sm font-medium text-gray-700">${description}</label>
                 </div>
                 <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" id="${id}" ${value === 'true' ? 'checked' : ''} class="sr-only peer" data-key="${key}">
+                    <input type="checkbox" id="${id}" ${isChecked ? 'checked' : ''} class="sr-only peer" data-key="${key}">
                     <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                 </label>
             </div>
         `;
-    } else if (setting.value_type === 'number') {
+    } else if (valueType === 'number' || !isNaN(Number(value))) {
         return `
-            <div>
+            <div class="py-1">
                 <label class="text-sm font-medium text-gray-700 block mb-1">${description}</label>
-                <input type="number" id="${id}" value="${value}" data-key="${key}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                <input type="number" id="${id}" value="${value}" data-key="${key}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
             </div>
         `;
     } else {
         return `
-            <div>
+            <div class="py-1">
                 <label class="text-sm font-medium text-gray-700 block mb-1">${description}</label>
-                <input type="text" id="${id}" value="${value}" data-key="${key}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                <input type="text" id="${id}" value="${value || ''}" data-key="${key}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
             </div>
         `;
     }
@@ -2818,7 +2847,9 @@ async function saveAllSettings() {
         let value;
         
         if (input.type === 'checkbox') {
-            value = input.checked ? 'true' : 'false';
+            value = input.checked;
+        } else if (input.type === 'number') {
+            value = parseFloat(input.value) || 0;
         } else {
             value = input.value;
         }
@@ -2826,10 +2857,19 @@ async function saveAllSettings() {
         updates.push({ key, value });
     });
     
+    if (updates.length === 0) {
+        alert('Nenhuma configuração para salvar');
+        return;
+    }
+    
     try {
-        await api.post('/settings/bulk', { settings: updates });
-        alert('Configurações salvas com sucesso!');
+        const { data } = await api.post('/settings/bulk', { settings: updates });
+        alert(data.message || 'Configurações salvas com sucesso!');
+        
+        // Recarregar para mostrar valores atualizados
+        loadView('settings');
     } catch (error) {
+        console.error('Error saving settings:', error);
         alert('Erro ao salvar configurações: ' + (error.response?.data?.error || error.message));
     }
 }

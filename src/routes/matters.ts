@@ -380,11 +380,27 @@ matters.post('/:id/submit', requireRole('secretaria', 'semad', 'admin'), async (
       }, 400);
     }
     
-    // Verificar se é final de semana
+    // Buscar configuração de dias úteis
+    const diasUteisConfig = await c.env.DB.prepare(
+      "SELECT value FROM system_settings WHERE key = 'prazos_dias_uteis'"
+    ).first();
+    
+    let diasUteis = [1, 2, 3, 4, 5]; // Segunda a sexta por padrão
+    if (diasUteisConfig && diasUteisConfig.value) {
+      try {
+        diasUteis = JSON.parse(diasUteisConfig.value as string);
+      } catch (e) {
+        console.error('Error parsing dias_uteis config:', e);
+      }
+    }
+    
+    // Verificar se hoje é dia útil configurado
     const dayOfWeek = now.getDay();
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
+    if (!diasUteis.includes(dayOfWeek)) {
+      const diasNomes = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
       return c.json({ 
-        error: 'Não é possível enviar matérias aos finais de semana.' 
+        error: `Hoje (${diasNomes[dayOfWeek]}) não é um dia útil configurado para envio de matérias.`,
+        dias_uteis_configurados: diasUteis.map((d: number) => diasNomes[d])
       }, 400);
     }
     

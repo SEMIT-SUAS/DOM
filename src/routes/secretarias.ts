@@ -9,24 +9,22 @@ import { authMiddleware, requireRole } from '../middleware/auth';
 
 const secretarias = new Hono<HonoContext>();
 
-// Aplicar autenticação em todas as rotas de secretarias
-secretarias.use('/*', authMiddleware);
-
 /**
  * GET /api/secretarias
- * Lista todas as secretarias
+ * Lista todas as secretarias (PÚBLICO - usado para filtros no frontend)
+ * Deve vir ANTES do middleware de autenticação
  */
-secretarias.get('/', requireRole('admin', 'semad'), async (c) => {
+secretarias.get('/', async (c) => {
   try {
+    // Apenas informações básicas para público
     const { results } = await c.env.DB.prepare(`
       SELECT 
-        s.*,
-        COUNT(DISTINCT u.id) as total_users,
-        COUNT(DISTINCT m.id) as total_matters
+        s.id,
+        s.name,
+        s.acronym,
+        s.active
       FROM secretarias s
-      LEFT JOIN users u ON s.id = u.secretaria_id AND u.active = 1
-      LEFT JOIN matters m ON s.id = m.secretaria_id
-      GROUP BY s.id
+      WHERE s.active = 1
       ORDER BY s.name ASC
     `).all();
     
@@ -37,6 +35,9 @@ secretarias.get('/', requireRole('admin', 'semad'), async (c) => {
     return c.json({ error: 'Erro ao buscar secretarias', details: error.message }, 500);
   }
 });
+
+// Aplicar autenticação em TODAS as outras rotas de secretarias
+secretarias.use('/*', authMiddleware);
 
 /**
  * GET /api/secretarias/:id

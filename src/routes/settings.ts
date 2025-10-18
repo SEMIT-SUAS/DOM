@@ -9,15 +9,35 @@ import { authMiddleware, requireRole } from '../middleware/auth';
 
 const settings = new Hono<HonoContext>();
 
-// Aplicar autenticação em todas as rotas de settings (exceto logo público)
-settings.use('/*', async (c, next) => {
-  // Logo público não requer autenticação
-  const path = c.req.path;
-  if (path.includes('/logo') && c.req.method === 'GET' && path.endsWith('/logo')) {
-    return await next();
+/**
+ * GET /api/settings/logo
+ * Retorna a logo atual (público - sem auth)
+ * IMPORTANTE: Deve vir ANTES do middleware de autenticação
+ */
+settings.get('/logo', async (c) => {
+  try {
+    const logo = await c.env.DB.prepare(
+      "SELECT value FROM system_settings WHERE key = 'logo_url'"
+    ).first();
+    
+    if (!logo || !logo.value) {
+      // Retornar logo padrão (brasão fornecido)
+      return c.json({ 
+        logo_url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCI+PHRleHQ+TE9HTzwvdGV4dD48L3N2Zz4='
+      });
+    }
+    
+    // O valor já está como data URL string, não precisa de JSON.parse
+    return c.json({ logo_url: logo.value as string });
+    
+  } catch (error: any) {
+    console.error('Error fetching logo:', error);
+    return c.json({ error: 'Erro ao buscar logo', details: error.message }, 500);
   }
-  return await authMiddleware(c, next);
 });
+
+// Aplicar autenticação em TODAS as outras rotas de settings
+settings.use('/*', authMiddleware);
 
 /**
  * GET /api/settings
@@ -215,32 +235,6 @@ settings.post('/logo/upload', requireRole('admin'), async (c) => {
   } catch (error: any) {
     console.error('Error uploading logo:', error);
     return c.json({ error: 'Erro ao enviar logo', details: error.message }, 500);
-  }
-});
-
-/**
- * GET /api/settings/logo
- * Retorna a logo atual (público - sem auth)
- */
-settings.get('/logo', async (c) => {
-  try {
-    const logo = await c.env.DB.prepare(
-      "SELECT value FROM system_settings WHERE key = 'logo_url'"
-    ).first();
-    
-    if (!logo || !logo.value) {
-      // Retornar logo padrão (brasão fornecido)
-      return c.json({ 
-        logo_url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCI+PHRleHQ+TE9HTzwvdGV4dD48L3N2Zz4='
-      });
-    }
-    
-    const logoUrl = JSON.parse(logo.value as string);
-    return c.json({ logo_url: logoUrl });
-    
-  } catch (error: any) {
-    console.error('Error fetching logo:', error);
-    return c.json({ error: 'Erro ao buscar logo', details: error.message }, 500);
   }
 });
 
