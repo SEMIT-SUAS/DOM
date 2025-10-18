@@ -607,16 +607,18 @@ matters.post('/:id/attachments', async (c) => {
       
       // TODO: Upload to R2 bucket
       // await c.env.R2.put(filename, arrayBuffer);
+      const fileUrl = `/api/matters/${id}/attachments/${filename}`; // URL placeholder
       
       // Salvar metadados no banco
       await c.env.DB.prepare(`
         INSERT INTO attachments (
-          matter_id, filename, original_name, file_type, file_size,
+          matter_id, filename, file_url, original_name, file_type, file_size,
           uploaded_by, uploaded_at
-        ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
       `).bind(
         id,
         filename,
+        fileUrl,
         file.name,
         file.type,
         file.size,

@@ -844,6 +844,8 @@ async function viewMatterDetails(id) {
                     </div>
                 ` : ''}
                 
+                <div id="attachmentsContainer" class="mb-6"></div>
+                
                 <div class="flex space-x-4">
                     ${matter.status === 'draft' ? `
                         <button 
@@ -878,8 +880,62 @@ async function viewMatterDetails(id) {
             </div>
         `;
         
+        // Carregar anexos
+        loadMatterAttachments(id);
+        
     } catch (error) {
         content.innerHTML = `<p class="text-red-600">Erro ao carregar detalhes: ${error.message}</p>`;
+    }
+}
+
+// Carregar anexos de uma matéria
+async function loadMatterAttachments(matterId) {
+    const container = document.getElementById('attachmentsContainer');
+    if (!container) return;
+    
+    try {
+        const { data } = await api.get(`/matters/${matterId}/attachments`);
+        const attachments = data.attachments || [];
+        
+        if (attachments.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+        
+        container.innerHTML = `
+            <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 class="text-lg font-semibold text-blue-800 mb-3">
+                    <i class="fas fa-paperclip mr-2"></i>Anexos (${attachments.length})
+                </h3>
+                <div class="space-y-2">
+                    ${attachments.map(att => `
+                        <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-file-${getFileIcon(att.original_name || att.filename)} text-blue-600 text-xl"></i>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-800">${att.original_name || att.filename}</p>
+                                    <p class="text-xs text-gray-500">
+                                        ${formatFileSize(att.file_size)} • 
+                                        Enviado por ${att.uploaded_by_name || 'ID: ' + att.uploaded_by} • 
+                                        ${formatDate(att.uploaded_at || att.created_at)}
+                                    </p>
+                                </div>
+                            </div>
+                            <button 
+                                onclick="alert('Download de anexos ainda não implementado')"
+                                class="text-blue-600 hover:text-blue-800"
+                                title="Download"
+                            >
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Erro ao carregar anexos:', error);
+        container.innerHTML = '';
     }
 }
 
