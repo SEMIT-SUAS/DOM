@@ -25,6 +25,16 @@ api.interceptors.request.use(config => {
     if (state.token) {
         config.headers.Authorization = `Bearer ${state.token}`;
     }
+    
+    // 🔍 DIAGNÓSTICO: Log do que Axios VAI enviar
+    if (config.method === 'put' && config.url?.includes('/users/')) {
+        console.log('🌐🌐🌐 AXIOS INTERCEPTOR - PUT /users/');
+        console.log('📦 CONFIG.DATA (o que AXIOS vai enviar):', config.data);
+        console.log('📦 TIPO:', typeof config.data);
+        console.log('📦 JSON:', JSON.stringify(config.data));
+        alert('🌐 AXIOS INTERCEPTOR: ' + JSON.stringify(config.data));
+    }
+    
     return config;
 });
 
@@ -2224,20 +2234,50 @@ async function editUser(id) {
         roleSelect.addEventListener('change', toggleSecretariaField);
         toggleSecretariaField();
         
-        document.getElementById('userForm').addEventListener('submit', async (e) => {
+        const formElement = document.getElementById('userForm');
+        
+        // 🔍 DIAGNÓSTICO: Verificar quantos listeners já existem
+        const listenerCount = formElement.getEventListeners ? 
+            (formElement.getEventListeners('submit')?.length || 0) : 
+            'N/A (use Chrome DevTools para verificar)';
+        console.log('⚠️ LISTENERS NO FORM:', listenerCount);
+        
+        // 🧹 LIMPAR qualquer listener anterior (medida drástica)
+        const newForm = formElement.cloneNode(true);
+        formElement.parentNode.replaceChild(newForm, formElement);
+        
+        newForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            e.stopImmediatePropagation(); // Bloquear outros handlers
+            
+            console.log('🎯 EVENT ORIGINAL:', e);
+            console.log('🎯 TARGET:', e.target);
+            console.log('🎯 CURRENT TARGET:', e.currentTarget);
             
             const nameElement = document.getElementById('userName');
             const roleElement = document.getElementById('userRole');
+            const emailElement = document.getElementById('userEmail');
+            const cpfElement = document.getElementById('userCpf');
+            const secretariaElement = document.getElementById('userSecretaria');
+            const activeElement = document.getElementById('userActive');
             
-            alert('🔥 SUBMIT EXECUTANDO! Pegando nome: ' + nameElement?.value + ' | Role: ' + roleElement?.value);
+            console.log('📋 ELEMENTOS DO FORM:', {
+                name: nameElement,
+                role: roleElement,
+                email: emailElement,
+                cpf: cpfElement,
+                secretaria: secretariaElement,
+                active: activeElement
+            });
+            
+            alert('🔥 SUBMIT V2! Nome: ' + nameElement?.value + ' | Role: ' + roleElement?.value);
             
             console.log('🚀 EDITUSER SUBMIT - Código app-v2.js executando!');
             console.log('📝 Nome elemento:', nameElement, 'Valor:', nameElement?.value);
             console.log('📝 Role elemento:', roleElement, 'Valor:', roleElement?.value);
             
             const role = roleElement.value;
-            const secretariaValue = document.getElementById('userSecretaria').value;
+            const secretariaValue = secretariaElement.value;
             
             // Validar secretaria para perfil "secretaria"
             if (role === 'secretaria' && !secretariaValue) {
@@ -2247,22 +2287,27 @@ async function editUser(id) {
             
             const userData = {
                 name: nameElement.value,
-                email: document.getElementById('userEmail').value,
-                cpf: document.getElementById('userCpf').value || null,
+                email: emailElement.value,
+                cpf: cpfElement.value || null,
                 role: role,
                 secretaria_id: secretariaValue ? parseInt(secretariaValue) : null,
-                active: document.getElementById('userActive').checked ? 1 : 0
+                active: activeElement.checked ? 1 : 0
             };
             
             alert('📤 ENVIANDO: ' + JSON.stringify(userData));
             console.log('📤 DADOS A ENVIAR:', JSON.stringify(userData, null, 2));
             
+            // 🔍 Interceptar o que Axios VAI enviar
+            console.log('🌐 ANTES do api.put - userData:', userData);
+            
             try {
-                await api.put(`/users/${id}`, userData);
+                const response = await api.put(`/users/${id}`, userData);
+                console.log('✅ RESPONSE:', response);
                 alert('Usuário atualizado com sucesso!');
                 closeUserModal();
                 loadView('users');
             } catch (error) {
+                console.error('❌ ERRO:', error);
                 alert(error.response?.data?.error || 'Erro ao atualizar usuário');
             }
         });
