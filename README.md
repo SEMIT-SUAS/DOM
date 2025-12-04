@@ -85,8 +85,28 @@ Após iniciar o servidor:
 
 ## 📚 DOCUMENTAÇÃO
 
-- **[INSTALACAO_VM.md](INSTALACAO_VM.md)** - Guia completo de instalação
-- **[install.sh](install.sh)** - Script de instalação automatizada
+### 📖 Guias Técnicos Completos
+
+1. **[STACK_TECNOLOGICO.md](STACK_TECNOLOGICO.md)** - Stack tecnológico detalhado
+   - Arquitetura da aplicação
+   - Todas as tecnologias e suas versões
+   - Workflow de desenvolvimento
+   - Troubleshooting e soluções
+
+2. **[TECNOLOGIAS_RESUMO.md](TECNOLOGIAS_RESUMO.md)** - Resumo visual do stack
+   - Diagramas de arquitetura
+   - Comparações com outras stacks
+   - Benchmarks de performance
+   - Checklist de conhecimentos
+
+3. **[FERRAMENTAS_UTILIZADAS.md](FERRAMENTAS_UTILIZADAS.md)** - Guia de ferramentas
+   - Ferramentas de desenvolvimento
+   - Serviços em nuvem (Cloudflare)
+   - Bibliotecas e frameworks
+   - Setup completo passo a passo
+
+4. **[INSTALACAO_VM.md](INSTALACAO_VM.md)** - Guia de instalação em VM
+5. **[install.sh](install.sh)** - Script de instalação automatizada
 
 ## 🗄️ BANCO DE DADOS
 
